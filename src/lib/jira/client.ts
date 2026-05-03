@@ -166,7 +166,7 @@ export async function fetchWorklogsForProject(
         maxResults: String(MAX_RESULTS),
         startAt: String(startAt),
       })
-      const res = await fetch(`${buildUrl(config, '/search')}?${params.toString()}`, {
+      const res = await fetch(`${buildUrl(config, '/search/jql')}?${params.toString()}`, {
         headers: {
           Authorization: buildAuthHeader(config),
           Accept: 'application/json',
