@@ -18,7 +18,7 @@ interface BillingTaskEditorRowProps {
   instanceUrl: string
   onHoursChange: (seconds: number | null) => void
   onSummaryEdited?: () => void
-  onDeleteManual?: (issueKey: string) => void
+  onDelete?: (issueKey: string) => void
   disabled?: boolean
 }
 
@@ -30,7 +30,7 @@ export default function BillingTaskEditorRow({
   instanceUrl,
   onHoursChange,
   onSummaryEdited,
-  onDeleteManual,
+  onDelete,
   disabled,
 }: BillingTaskEditorRowProps): React.JSX.Element {
   // A row is dirty if localSeconds has been set and differs from the DB effective value
@@ -133,7 +133,7 @@ export default function BillingTaskEditorRow({
 
       {/* Actions */}
       <TableCell className="w-12 align-top">
-        {isEditable && task.isManual && (
+        {isEditable && (
           <Tooltip>
             <TooltipTrigger
               render={
@@ -141,15 +141,15 @@ export default function BillingTaskEditorRow({
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => onDeleteManual?.(task.jiraIssueKey)}
+                  onClick={() => onDelete?.(task.jiraIssueKey)}
                   disabled={disabled}
                 />
               }
             >
               <Trash2 className="h-3.5 w-3.5" />
-              <span className="sr-only">Remove manual task</span>
+              <span className="sr-only">Delete task</span>
             </TooltipTrigger>
-            <TooltipContent>Remove manual task</TooltipContent>
+            <TooltipContent>Delete task</TooltipContent>
           </Tooltip>
         )}
       </TableCell>

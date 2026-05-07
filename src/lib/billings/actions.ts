@@ -20,6 +20,7 @@ import {
   updateWorklogSummary,
   deleteWorklogRow,
   updateTaskHours,
+  deleteTaskWorklogs,
 } from '@/lib/billings/queries'
 import { parseDateString } from '@/lib/billings/date-utils'
 import { db } from '@/lib/db/client'
@@ -501,6 +502,32 @@ export async function deleteManualTaskAction(
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Failed to delete manual task.' }
+  }
+}
+
+export async function deleteTaskAction(
+  billingId: string,
+  issueKey: string,
+): Promise<ActionResult<void>> {
+  try {
+    const user = await requireSession()
+    const permError = await guardAction(user.id, 'worklog:edit')
+    if (permError) return { success: false, error: permError }
+
+    const billing = await getBillingById(billingId)
+    if (!billing) return { success: false, error: 'Billing period not found.' }
+
+    if (billing.status !== 'draft') {
+      return { success: false, error: 'Tasks can only be deleted from draft billings.' }
+    }
+
+    await deleteTaskWorklogs(billingId, issueKey)
+
+    revalidatePath(`/projects/${billing.projectId}/billings/${billingId}`)
+
+    return { success: true, data: undefined }
+  } catch {
+    return { success: false, error: 'Failed to delete task.' }
   }
 }
 

@@ -30,7 +30,7 @@ import { AddManualTaskDialog } from '@/components/billings/AddManualTaskDialog'
 import BillingTaskEditorRow from '@/components/billings/BillingTaskEditorRow'
 import HoursInput from '@/components/billings/HoursInput'
 import { Badge } from '@/components/ui/badge'
-import { updateTaskHoursAction, resetAllWorklogsAction, deleteManualTaskAction } from '@/lib/billings/actions'
+import { updateTaskHoursAction, resetAllWorklogsAction, deleteTaskAction } from '@/lib/billings/actions'
 import type { BillingStatus, BillingTaskSummary } from '@/lib/billings/types'
 
 interface BillingTaskEditorTableProps {
@@ -138,9 +138,9 @@ export default function BillingTaskEditorTable({
     })
   }
 
-  function handleDeleteManual(issueKey: string): void {
+  function handleDeleteTask(issueKey: string): void {
     startDeleteTransition(async () => {
-      const result = await deleteManualTaskAction(billingId, issueKey)
+      const result = await deleteTaskAction(billingId, issueKey)
       if (result.success) {
         router.refresh()
       } else {
@@ -277,12 +277,12 @@ export default function BillingTaskEditorTable({
                           <div className="h-2 w-2 rounded-full bg-amber-500" />
                         )}
                       </div>
-                      {isEditable && task.isManual && (
+                      {isEditable && (
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => handleDeleteManual(task.jiraIssueKey)}
+                          onClick={() => handleDeleteTask(task.jiraIssueKey)}
                           disabled={isBusy}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -355,7 +355,7 @@ export default function BillingTaskEditorTable({
                     instanceUrl={instanceUrl}
                     onHoursChange={(seconds) => handleHoursChange(task.jiraIssueKey, seconds)}
                     onSummaryEdited={() => router.refresh()}
-                    onDeleteManual={handleDeleteManual}
+                    onDelete={handleDeleteTask}
                     disabled={isBusy}
                   />
                 ))}

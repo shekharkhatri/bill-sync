@@ -463,6 +463,18 @@ export async function deleteManualTask(billingId: string, issueKey: string): Pro
 }
 
 /**
+ * Deletes all worklog rows for a given issue key in a billing (Jira or manual).
+ * Used by the task-aggregated billing editor.
+ */
+export async function deleteTaskWorklogs(billingId: string, issueKey: string): Promise<void> {
+  await db
+    .deleteFrom('worklogs')
+    .where('billing_id', '=', billingId)
+    .where('jira_issue_key', '=', issueKey)
+    .execute()
+}
+
+/**
  * Updates the custom summary and Jira reference visibility for a single worklog row.
  * Used when the user edits the task name in the billing editor (per-row, not per-issue).
  */
