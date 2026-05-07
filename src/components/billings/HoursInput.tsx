@@ -9,6 +9,7 @@ interface HoursInputProps {
   originalSeconds: number
   onChange: (seconds: number | null) => void
   disabled?: boolean
+  max?: number
 }
 
 export default function HoursInput({
@@ -16,6 +17,7 @@ export default function HoursInput({
   originalSeconds,
   onChange,
   disabled,
+  max = 24,
 }: HoursInputProps): React.JSX.Element {
   const displayHours = value !== null ? value / 3600 : originalSeconds / 3600
   const [inputValue, setInputValue] = useState(displayHours.toFixed(2))
@@ -26,12 +28,12 @@ export default function HoursInput({
   }, [value, originalSeconds])
 
   const parsed = parseFloat(inputValue)
-  const isOutOfRange = !isNaN(parsed) && (parsed < 0 || parsed > 24)
+  const isOutOfRange = !isNaN(parsed) && (parsed < 0 || parsed > max)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>): void {
     setInputValue(e.target.value)
     const num = parseFloat(e.target.value)
-    if (!isNaN(num) && num >= 0 && num <= 24) {
+    if (!isNaN(num) && num >= 0 && num <= max) {
       onChange(Math.round(num * 3600))
     }
   }
@@ -52,7 +54,7 @@ export default function HoursInput({
         <Input
           type="number"
           min="0"
-          max="24"
+          max={max}
           step="0.25"
           value={inputValue}
           onChange={handleChange}

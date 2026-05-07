@@ -21,8 +21,9 @@ Re-pull only available in draft status → deletes all non-manual rows, re-inser
 
 Manual rows: synthetic `jira_issue_key = 'MANUAL-{timestamp}'` (never shown in UI).
 
-## Active Billing Editor (WorklogEditorTable)
-One row per raw worklog entry. Located: `src/components/billings/WorklogEditorTable.tsx`.
+## Active Billing Editor (BillingTaskEditorTable)
+One row per unique Jira issue (hours aggregated across all worklogs for that issue).
+Located: `src/components/billings/BillingTaskEditorTable.tsx`.
 Route: `/projects/[id]/billings/[billingId]`
 
 Columns (left → right):
@@ -37,9 +38,10 @@ Columns (left → right):
 
 Removed columns: Author, Date. Comment pre-fill from Jira: removed.
 
-## BillingTaskEditorTable (built, not active)
+## BillingTaskEditorTable (active)
 Aggregated task view at `src/components/billings/BillingTaskEditorTable.tsx`.
-Not wired to billing detail page yet. Active after Batch 10 switchover.
+Wired to billing detail page. Groups worklogs by `jira_issue_key`, sums hours.
+Data source: `getBillingTaskSummaries(billingId)` → `BillingTaskSummary[]`.
 
 ## Manual Rows Behavior
 - Added via `AddManualRowDialog` — summary, hours, internal note
@@ -64,9 +66,10 @@ Calls `updateWorklogSummaryAction(worklogId, customSummary, removeJiraReference)
 | deleteWorklogRowAction        | worklog:edit    | single row delete, draft only           |
 | updateBillingStatusAction     | billing:finalize| enforces ALLOWED_TRANSITIONS            |
 | deleteBillingAction           | billing:create  | removes billing + all worklogs, draft only |
-| addManualTaskAction           | worklog:edit    | legacy (for BillingTaskEditorTable)     |
-| updateTaskSummaryAction       | worklog:edit    | legacy per-issueKey update              |
-| deleteManualTaskAction        | worklog:edit    | legacy (for BillingTaskEditorTable)     |
+| addManualTaskAction           | worklog:edit    | inserts manual task (used by BillingTaskEditorTable) |
+| updateTaskSummaryAction       | worklog:edit    | per-issueKey summary update             |
+| deleteManualTaskAction        | worklog:edit    | removes manual task (used by BillingTaskEditorTable) |
+| updateTaskHoursAction         | worklog:edit    | sets total billed hours for a task, distributes proportionally across worklogs |
 
 ## Key Query Functions (src/lib/billings/queries.ts)
 `getBillingsByProject`, `getBillingById`, `getBillingWithStats`

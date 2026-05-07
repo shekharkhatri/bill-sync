@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { CalendarRange, Info, Minus, TrendingDown } from 'lucide-react'
 import { getUserContext, hasPermission } from '@/lib/auth/permissions'
 import { getProjectById } from '@/lib/projects/queries'
-import { getBillingWithStats, getWorklogsByBilling } from '@/lib/billings/queries'
+import { getBillingWithStats, getBillingTaskSummaries } from '@/lib/billings/queries'
 import { getJiraConfigForDisplay } from '@/lib/jira/queries'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,7 +14,7 @@ import { BILLING_STATUS_LABELS, BILLING_STATUS_VARIANTS } from '@/lib/billings/t
 import BillingActions from '@/components/billings/BillingActions'
 import DeleteBillingButton from '@/components/billings/DeleteBillingButton'
 import PullWorklogsButton from '@/components/billings/PullWorklogsButton'
-import WorklogEditorTable from '@/components/billings/WorklogEditorTable'
+import BillingTaskEditorTable from '@/components/billings/BillingTaskEditorTable'
 import WorklogSummaryFooter from '@/components/billings/WorklogSummaryFooter'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 
@@ -38,8 +38,8 @@ export default async function BillingDetailPage({
   const project = await getProjectById(billing.projectId)
   if (!project) notFound()
 
-  const [worklogs, jiraConfig] = await Promise.all([
-    getWorklogsByBilling(billingId),
+  const [tasks, jiraConfig] = await Promise.all([
+    getBillingTaskSummaries(billingId),
     getJiraConfigForDisplay(billing.projectId),
   ])
 
@@ -158,13 +158,13 @@ export default async function BillingDetailPage({
           <div>
             <h2 className="text-lg font-semibold inline">Line Items</h2>
             <span className="text-sm text-muted-foreground ml-2">
-              ({worklogs.length} {worklogs.length === 1 ? 'line item' : 'line items'})
+              ({tasks.length} {tasks.length === 1 ? 'line item' : 'line items'})
             </span>
           </div>
           {billing.status === 'draft' && (
             <PullWorklogsButton
               billingId={billing.id}
-              hasExistingWorklogs={worklogs.length > 0}
+              hasExistingWorklogs={tasks.length > 0}
             />
           )}
         </div>
@@ -180,10 +180,10 @@ export default async function BillingDetailPage({
           </Alert>
         )}
 
-        <WorklogEditorTable
+        <BillingTaskEditorTable
           billingId={billing.id}
           billingStatus={billing.status}
-          worklogs={worklogs}
+          tasks={tasks}
           instanceUrl={instanceUrl}
         />
       </div>
@@ -191,7 +191,7 @@ export default async function BillingDetailPage({
       <WorklogSummaryFooter
         originalTotal={billing.totalOriginalHours}
         modifiedTotal={billing.totalModifiedHours}
-        worklogCount={billing.worklogCount}
+        worklogCount={tasks.length}
         billingLabel={billing.label}
       />
     </div>

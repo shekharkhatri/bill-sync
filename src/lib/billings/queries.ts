@@ -354,6 +354,50 @@ export async function getBillingTaskSummaries(billingId: string): Promise<Billin
 }
 
 /**
+ * Updates the billed hours for all worklogs under a given issue key,
+ * distributing totalModifiedSeconds proportionally by original_seconds.
+ * The last worklog absorbs any rounding remainder.
+ */
+export async function updateTaskHours(
+  billingId: string,
+  jiraIssueKey: string,
+  totalModifiedSeconds: number,
+): Promise<void> {
+  const rows = await db
+    .selectFrom('worklogs')
+    .select(['id', 'original_seconds'])
+    .where('billing_id', '=', billingId)
+    .where('jira_issue_key', '=', jiraIssueKey)
+    .execute()
+
+  if (rows.length === 0) return
+
+  const totalOriginal = rows.reduce((sum, r) => sum + r.original_seconds, 0)
+
+  // Proportional distribution; equal split when all originals are 0
+  const shares: number[] = []
+  for (let i = 0; i < rows.length - 1; i++) {
+    shares.push(
+      totalOriginal === 0
+        ? Math.round(totalModifiedSeconds / rows.length)
+        : Math.round((totalModifiedSeconds * rows[i].original_seconds) / totalOriginal),
+    )
+  }
+  // Last row absorbs rounding remainder
+  shares.push(totalModifiedSeconds - shares.reduce((s, n) => s + n, 0))
+
+  await Promise.all(
+    rows.map((row, i) =>
+      db
+        .updateTable('worklogs')
+        .set({ modified_seconds: shares[i], updated_at: new Date() })
+        .where('id', '=', row.id)
+        .execute(),
+    ),
+  )
+}
+
+/**
  * Inserts a manually-added billing task as a single worklog row.
  * The synthetic issue key (MANUAL-<timestamp>) is used for grouping only
  * and is never shown in the UI since is_manual = true and jira_reference_removed = true.
