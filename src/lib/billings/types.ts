@@ -31,8 +31,26 @@ export interface Worklog {
   modifiedSeconds: number | null
   originalComment: string | null
   modifiedComment: string | null
+  isManual: boolean
+  customSummary: string | null
+  jiraReferenceRemoved: boolean
   createdAt: Date
   updatedAt: Date
+}
+
+export interface BillingTaskSummary {
+  jiraIssueKey: string
+  issueSummary: string | null
+  isManual: boolean
+  customSummary: string | null
+  jiraReferenceRemoved: boolean
+  displaySummary: string
+  displayIssueKey: string | null
+  totalOriginalSeconds: number
+  totalModifiedSeconds: number | null
+  effectiveSeconds: number
+  worklogCount: number
+  authors: string[]
 }
 
 export interface WorklogWithEffective extends Worklog {
@@ -40,6 +58,8 @@ export interface WorklogWithEffective extends Worklog {
   effectiveHours: number
   effectiveComment: string | null
   isModified: boolean
+  displaySummary: string
+  displayIssueKey: string | null
 }
 
 export type CreateBillingInput = {
@@ -52,6 +72,12 @@ export type UpdateWorklogInput = {
   worklogId: string
   modifiedSeconds?: number | null
   modifiedComment?: string | null
+}
+
+export type AddManualTaskInput = {
+  label: string           // task name / summary shown in billing
+  hours: number           // decimal hours e.g. 2.5
+  comment: string | null  // optional description
 }
 
 export type BillingStatusTransition =

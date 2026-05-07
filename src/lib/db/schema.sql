@@ -98,10 +98,13 @@ CREATE TABLE worklogs (
   work_started     DATE NOT NULL,
   original_seconds INTEGER NOT NULL,
   modified_seconds INTEGER,
-  original_comment TEXT,
-  modified_comment TEXT,
-  created_at       TIMESTAMPTZ DEFAULT now(),
-  updated_at       TIMESTAMPTZ DEFAULT now()
+  original_comment       TEXT,
+  modified_comment       TEXT,
+  is_manual              BOOLEAN NOT NULL DEFAULT false,
+  custom_summary         TEXT,
+  jira_reference_removed BOOLEAN NOT NULL DEFAULT false,
+  created_at             TIMESTAMPTZ DEFAULT now(),
+  updated_at             TIMESTAMPTZ DEFAULT now()
 );
 
 -- EXPORT AUDIT LOG

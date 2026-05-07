@@ -24,4 +24,7 @@ export const DATABASE_URL = process.env.DATABASE_URL as string
 export const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY as string
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL as string
 
+// Dev-only — optional, never validated, never used in production
+export const DEV_BYPASS_EMAIL = process.env.DEV_BYPASS_EMAIL ?? "shekhar@thehivecraft.com"
+
 validateEnv()

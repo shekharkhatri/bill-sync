@@ -14,7 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { formatHours, formatDateShort } from '@/lib/jira/live-hours'
+import { formatHours, formatDateShort } from '@/lib/jira/format-utils'
 import type { JiraWorklogPreviewEntry } from '@/lib/jira/dashboard-types'
 
 interface RecentWorklogsTableProps {

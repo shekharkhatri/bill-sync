@@ -10,8 +10,9 @@ import {
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { formatDateFull } from '@/lib/jira/live-hours'
+import { formatDateFull } from '@/lib/jira/format-utils'
 import { BILLING_STATUS_LABELS, BILLING_STATUS_VARIANTS } from '@/lib/billings/types'
+import DeleteBillingButton from '@/components/billings/DeleteBillingButton'
 import type { BillingWithStats } from '@/lib/billings/types'
 
 interface BillingCardProps {
@@ -63,7 +64,19 @@ export function BillingCard({ billing, projectId }: BillingCardProps): React.JSX
         </div>
       </CardContent>
 
-      <CardFooter className="border-t pt-3 flex justify-end gap-2">
+      <CardFooter className="border-t pt-3 flex justify-between items-center">
+        <div>
+          {billing.status === 'draft' ? (
+            <DeleteBillingButton
+              billingId={billing.id}
+              billingLabel={billing.label}
+              projectId={projectId}
+              redirectAfterDelete={false}
+            />
+          ) : (
+            <div />
+          )}
+        </div>
         <Button
           variant="default"
           size="sm"

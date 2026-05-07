@@ -55,13 +55,24 @@ function formatDate(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
-// project clause first — Jira indexes project queries most efficiently;
-// scope clause last so the date index is applied before the optional JQL filter.
+// buildJql assembles the JQL query for issue search.
+// worklogDate filters ISSUES that have any worklog in the range;
+// individual worklog date filtering still happens in post-processing.
+//
+// Examples:
+// No scope:
+// project = "ENG" AND worklogDate >= "2025-04-01" AND worklogDate <= "2025-04-30"
+//
+// With label scope:
+// project = "ENG" AND worklogDate >= "2025-04-01" AND worklogDate <= "2025-04-30"
+//   AND (labels = "billable")
+//
+// With complex scope:
+// project = "ENG" AND worklogDate >= "2025-04-01" AND worklogDate <= "2025-04-30"
+//   AND (issuetype in (Story, Bug) AND sprint in openSprints())
 function buildJql(config: JiraConnectionConfig, startDate: Date, endDate: Date): string {
-  const base = `project = "${config.projectKey}"`
-  const dates = `worklogDate >= "${formatDate(startDate)}" AND worklogDate <= "${formatDate(endDate)}"`
-  const scopeClause = config.jqlScope?.trim() ? `AND (${config.jqlScope.trim()})` : ''
-  return `${base} AND ${dates}${scopeClause ? ' ' + scopeClause : ''}`
+  const scopeClause = config.jqlScope?.trim() ? ` AND (${config.jqlScope.trim()})` : ''
+  return `project = "${config.projectKey}" AND worklogDate >= "${formatDate(startDate)}" AND worklogDate <= "${formatDate(endDate)}"${scopeClause}`
 }
 
 /**
@@ -114,12 +125,15 @@ export async function validateJqlScope(
 
   try {
     const jql = `project = "${config.projectKey}" AND ${jqlScope.trim()}`
-    const params = new URLSearchParams({ jql, fields: 'id', maxResults: '1' })
-    const res = await fetch(`${buildUrl(config, '/search')}?${params.toString()}`, {
+    // POST /rest/api/3/search/jql — GET /rest/api/3/search returns 410 Gone on Jira Cloud.
+    const res = await fetch(buildUrl(config, '/search/jql'), {
+      method: 'POST',
       headers: {
         Authorization: buildAuthHeader(config),
         Accept: 'application/json',
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ jql, fields: ['id'], maxResults: 1 }),
       signal: controller.signal,
     })
     clearTimeout(timer)
@@ -127,7 +141,7 @@ export async function validateJqlScope(
     if (!res.ok) return { valid: false }
 
     const data = (await res.json()) as JiraSearchResult
-    return { valid: true, count: data.total }
+    return { valid: true, count: data.total ?? data.issues.length }
   } catch {
     clearTimeout(timer)
     return { valid: false }
@@ -136,8 +150,9 @@ export async function validateJqlScope(
 
 /**
  * Fetches all worklogs for a project within a date range.
- * Uses GET /rest/api/3/search with query parameters (POST is deprecated/gone).
- * Handles Jira pagination for both issue search and per-issue worklogs.
+ * Uses POST /rest/api/3/search/jql (the GET /rest/api/3/search endpoint returns 410 Gone).
+ * The new endpoint uses cursor-based pagination via nextPageToken — no startAt.
+ * Handles per-issue worklog pagination separately for issues with >20 worklogs.
  */
 export async function fetchWorklogsForProject(
   config: JiraConnectionConfig,
@@ -152,7 +167,8 @@ export async function fetchWorklogsForProject(
   const MAX_PAGES = 10
   const allEntries: JiraWorklogEntry[] = []
 
-  let startAt = 0
+  // POST /rest/api/3/search/jql uses cursor-based pagination via nextPageToken.
+  let nextPageToken: string | undefined = undefined
 
   for (let page = 0; page < MAX_PAGES; page++) {
     const controller = new AbortController()
@@ -160,23 +176,31 @@ export async function fetchWorklogsForProject(
 
     let searchResult: JiraSearchResult
     try {
-      const params = new URLSearchParams({
+      const body: Record<string, unknown> = {
         jql,
-        fields: 'summary,worklog',
-        maxResults: String(MAX_RESULTS),
-        startAt: String(startAt),
-      })
-      const res = await fetch(`${buildUrl(config, '/search/jql')}?${params.toString()}`, {
+        fields: ['summary', 'worklog'],
+        maxResults: MAX_RESULTS,
+      }
+      // Only include nextPageToken on subsequent pages — omitting it on the first request.
+      if (nextPageToken !== undefined) {
+        body.nextPageToken = nextPageToken
+      }
+
+      const res = await fetch(buildUrl(config, '/search/jql'), {
+        method: 'POST',
         headers: {
           Authorization: buildAuthHeader(config),
           Accept: 'application/json',
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify(body),
         signal: controller.signal,
       })
       clearTimeout(timer)
 
       if (!res.ok) {
-        console.error('[fetchWorklogsForProject] Search failed:', res.status)
+        const errBody: unknown = await res.json().catch(() => null)
+        console.error('[fetchWorklogsForProject] Search failed:', res.status, JSON.stringify(errBody))
         break
       }
       searchResult = (await res.json()) as JiraSearchResult
@@ -188,6 +212,9 @@ export async function fetchWorklogsForProject(
     for (const issue of searchResult.issues) {
       const worklogs = await fetchAllWorklogsForIssue(config, issue.key, issue.fields.worklog)
       for (const wl of worklogs) {
+        // IMPORTANT: Filter on worklog.started (when work was performed by the author),
+        // NOT on issue created date, updated date, or any other field.
+        // worklog.started is the authoritative date for billing period inclusion.
         const started = wl.started.substring(0, 10)
         if (started < startStr || started > endStr) continue
 
@@ -204,18 +231,23 @@ export async function fetchWorklogsForProject(
       }
     }
 
-    const fetched = startAt + searchResult.issues.length
-    if (fetched >= searchResult.total) break
+    // No nextPageToken in response = no more pages.
+    if (!searchResult.nextPageToken) break
 
     if (page === MAX_PAGES - 1) {
       console.warn('[fetchWorklogsForProject] Safety page cap reached — some issues may be missing')
       break
     }
 
-    startAt += MAX_RESULTS
+    nextPageToken = searchResult.nextPageToken
   }
 
-  return allEntries
+  const seen = new Set<string>()
+  return allEntries.filter((entry) => {
+    if (seen.has(entry.worklogId)) return false
+    seen.add(entry.worklogId)
+    return true
+  })
 }
 
 async function fetchAllWorklogsForIssue(

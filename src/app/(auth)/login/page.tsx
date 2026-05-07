@@ -7,7 +7,8 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { signInWithGoogle } from "@/lib/auth/actions"
+import { Terminal } from "lucide-react"
+import { signInWithGoogle, signInDev } from "@/lib/auth/actions"
 
 interface LoginPageProps {
   searchParams: Promise<{ error?: string }>
@@ -17,6 +18,7 @@ export default async function LoginPage({
   searchParams,
 }: LoginPageProps): Promise<React.JSX.Element> {
   const { error } = await searchParams
+  const isDev = process.env.NODE_ENV === "development"
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -54,12 +56,52 @@ export default async function LoginPage({
               </Alert>
             )}
 
+            {error === "not_available" && (
+              <Alert variant="destructive">
+                <AlertTitle>Not available</AlertTitle>
+                <AlertDescription>
+                  Dev login is only available in development mode.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {error === "dev_auth_failed" && (
+              <Alert variant="destructive">
+                <AlertTitle>Dev login failed</AlertTitle>
+                <AlertDescription>
+                  Check that <code className="font-mono text-xs">DEV_BYPASS_EMAIL</code> and{" "}
+                  <code className="font-mono text-xs">DEV_BYPASS_PASSWORD</code> match a valid
+                  Supabase user.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <form action={signInWithGoogle}>
               <Button type="submit" variant="outline" className="w-full">
                 <GoogleIcon />
                 Continue with Google
               </Button>
             </form>
+
+            {/* DEV ONLY — never rendered in production */}
+            {isDev && (
+              <div className="border border-dashed border-amber-400 rounded-lg p-3 space-y-2">
+                <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
+                  <Terminal className="h-3 w-3" />
+                  Development only
+                </p>
+                <form action={signInDev}>
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    className="w-full border-amber-400 text-amber-700 hover:bg-amber-50"
+                  >
+                    <Terminal className="h-4 w-4 mr-2" />
+                    Sign in as dev user
+                  </Button>
+                </form>
+              </div>
+            )}
           </CardContent>
         </Card>
 

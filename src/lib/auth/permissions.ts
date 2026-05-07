@@ -4,6 +4,11 @@ import { requireSession } from '@/lib/auth/session'
 import { db } from '@/lib/db/client'
 import type { PermissionKey, UserContext } from '@/lib/auth/types'
 
+const ALL_PERMISSIONS: PermissionKey[] = [
+  'project:view', 'project:create', 'project:edit', 'project:archive',
+  'jira:manage', 'billing:create', 'worklog:edit', 'billing:finalize', 'billing:export',
+]
+
 /**
  * Returns the current user with their resolved permission list.
  * Cached per request — safe to call multiple times in one render pass.

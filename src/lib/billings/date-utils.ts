@@ -1,3 +1,18 @@
+const shortDateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' })
+const fullDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+})
+
+export function formatDateShort(date: Date): string {
+  return shortDateFormatter.format(date)
+}
+
+export function formatDateFullSafe(date: Date): string {
+  return fullDateFormatter.format(date)
+}
+
 /**
  * Parses a YYYY-MM-DD string to a Date object at UTC midnight.
  * Throws if the format is invalid.
@@ -17,13 +32,13 @@ const shortMonthDayYear = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
 })
 
-export function formatDateRange(startDate: Date, endDate: Date): string {
-  if (startDate.getUTCFullYear() === endDate.getUTCFullYear()) {
-    const start = shortMonthDay.format(startDate)
-    const end = shortMonthDayYear.format(endDate)
-    return `${start} – ${end}`
+export function formatDateRange(startDate: string, endDate: string): string {
+  const start = parseDateString(startDate)
+  const end = parseDateString(endDate)
+  if (start.getUTCFullYear() === end.getUTCFullYear()) {
+    return `${shortMonthDay.format(start)} – ${shortMonthDayYear.format(end)}`
   }
-  return `${shortMonthDayYear.format(startDate)} – ${shortMonthDayYear.format(endDate)}`
+  return `${shortMonthDayYear.format(start)} – ${shortMonthDayYear.format(end)}`
 }
 
 export function isDateRangeValid(startDate: string, endDate: string): boolean {

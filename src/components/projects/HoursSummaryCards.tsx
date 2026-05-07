@@ -1,13 +1,16 @@
 import { Clock, Users, BarChart3 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import { formatHours, formatDateFull } from '@/lib/jira/live-hours'
+import { formatHours, formatDateFull } from '@/lib/jira/format-utils'
+import { formatDateRange } from '@/lib/billings/date-utils'
 import type { JiraProjectSummary } from '@/lib/jira/dashboard-types'
 
 interface HoursSummaryCardsProps {
   summary: JiraProjectSummary
+  startDate?: string
+  endDate?: string
 }
 
-export function HoursSummaryCards({ summary }: HoursSummaryCardsProps): React.JSX.Element {
+export function HoursSummaryCards({ summary, startDate, endDate }: HoursSummaryCardsProps): React.JSX.Element {
   const uniqueIssues = new Set(summary.recentWorklogs.map((w) => w.issueKey)).size
 
   return (
@@ -51,7 +54,8 @@ export function HoursSummaryCards({ summary }: HoursSummaryCardsProps): React.JS
       </div>
 
       <p className="text-xs text-muted-foreground text-right mt-2">
-        Last updated: {formatDateFull(summary.fetchedAt)} · Current month
+        Last updated: {formatDateFull(summary.fetchedAt)} ·{' '}
+        {startDate && endDate ? formatDateRange(startDate, endDate) : 'Current month'}
       </p>
     </div>
   )

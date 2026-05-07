@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -229,35 +230,36 @@ export function JiraSettingsForm({
               </FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder='issuetype in (Story, Bug, Task) AND assignee in (accountId1)'
+                  placeholder='labels = "billable"'
                   rows={3}
                   className="font-mono text-xs resize-none"
                   {...field}
                 />
               </FormControl>
-              <FormDescription>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    Narrow which issues are included when pulling worklogs. Leave empty to include
-                    all issues in the project.
-                  </p>
-                  <p className="text-xs font-medium text-muted-foreground">Examples:</p>
-                  <div className="rounded-md bg-muted p-2 space-y-1 font-mono text-xs text-muted-foreground">
-                    <p>{'issuetype in (Story, Bug)'}</p>
-                    <p>{'assignee in (currentUser())'}</p>
-                    <p>{'sprint in openSprints()'}</p>
-                    <p>{'labels = "billable"'}</p>
-                  </div>
-                  <a
-                    href="https://support.atlassian.com/jira-software-cloud/docs/use-advanced-search-with-jira-query-language-jql/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-primary underline-offset-4 hover:underline"
-                  >
-                    JQL reference documentation ↗
-                  </a>
+              <div className="space-y-2 mt-2">
+                <p className="text-xs text-muted-foreground">
+                  Filter which issues are included when pulling worklogs.
+                </p>
+                <p className="text-xs font-medium text-muted-foreground">Common examples:</p>
+                <div className="rounded-md bg-muted px-3 py-2 space-y-1 font-mono text-xs text-muted-foreground">
+                  <p>{'labels = "billable"'}</p>
+                  <p>{'labels in ("client-a", "billable")'}</p>
+                  <p>{'issuetype in (Story, Bug, Task)'}</p>
+                  <p>{'sprint in openSprints()'}</p>
+                  <p>{'labels = "billable" AND issuetype in (Story, Bug)'}</p>
                 </div>
-              </FormDescription>
+                <p className="text-xs text-muted-foreground">
+                  Leave empty to include all issues in the project.
+                </p>
+                <Link
+                  href="https://support.atlassian.com/jira-software-cloud/docs/use-advanced-search-with-jira-query-language-jql/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline"
+                >
+                  JQL reference ↗
+                </Link>
+              </div>
               <FormMessage />
             </FormItem>
           )}
@@ -279,11 +281,11 @@ export function JiraSettingsForm({
                 {testResult.success && testResult.jqlMatchCount !== undefined && (
                   <p
                     className={`text-xs mt-1 ${
-                      testResult.jqlMatchCount === 0 ? 'text-amber-600' : 'text-muted-foreground'
+                      testResult.jqlMatchCount === 0 ? 'text-amber-600' : 'text-emerald-600'
                     }`}
                   >
                     {testResult.jqlMatchCount === 0
-                      ? '⚠ JQL scope matches 0 issues — verify your filter is correct.'
+                      ? '⚠ JQL scope matches 0 issues — verify your filter.'
                       : `JQL scope matches ${testResult.jqlMatchCount} issue${testResult.jqlMatchCount !== 1 ? 's' : ''} in this project.`}
                   </p>
                 )}

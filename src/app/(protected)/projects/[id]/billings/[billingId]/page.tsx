@@ -1,14 +1,22 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { CalendarRange, Minus, Table as TableIcon, TrendingDown } from 'lucide-react'
+import { CalendarRange, Info, Minus, TrendingDown } from 'lucide-react'
 import { getUserContext, hasPermission } from '@/lib/auth/permissions'
 import { getProjectById } from '@/lib/projects/queries'
-import { getBillingWithStats } from '@/lib/billings/queries'
+import { getBillingWithStats, getWorklogsByBilling } from '@/lib/billings/queries'
+import { getJiraConfigForDisplay } from '@/lib/jira/queries'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ChevronRight } from 'lucide-react'
-import { formatDateFull } from '@/lib/jira/live-hours'
+import { formatDateFull } from '@/lib/jira/format-utils'
 import { BILLING_STATUS_LABELS, BILLING_STATUS_VARIANTS } from '@/lib/billings/types'
+import BillingActions from '@/components/billings/BillingActions'
+import DeleteBillingButton from '@/components/billings/DeleteBillingButton'
+import PullWorklogsButton from '@/components/billings/PullWorklogsButton'
+import WorklogEditorTable from '@/components/billings/WorklogEditorTable'
+import WorklogSummaryFooter from '@/components/billings/WorklogSummaryFooter'
+import { PermissionGuard } from '@/components/shared/PermissionGuard'
 
 interface BillingDetailPageProps {
   params: Promise<{ id: string; billingId: string }>
@@ -30,11 +38,19 @@ export default async function BillingDetailPage({
   const project = await getProjectById(billing.projectId)
   if (!project) notFound()
 
+  const [worklogs, jiraConfig] = await Promise.all([
+    getWorklogsByBilling(billingId),
+    getJiraConfigForDisplay(billing.projectId),
+  ])
+
+  const instanceUrl = jiraConfig?.instanceUrl ?? ''
+  const canFinalize = hasPermission(context, 'billing:finalize')
+
   const delta = billing.totalModifiedHours - billing.totalOriginalHours
   const deltaStr = (delta >= 0 ? '+' : '') + delta.toFixed(1) + 'h'
 
   return (
-    <div>
+    <div className="pb-20 md:pb-24">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
         <Link href="/dashboard" className="hover:text-foreground transition-colors">
@@ -69,8 +85,18 @@ export default async function BillingDetailPage({
           </Badge>
         </div>
 
-        <div>
-          <p className="text-xs text-muted-foreground">Actions coming in Batch 8</p>
+        <div className="flex items-center gap-2">
+          {billing.status === 'draft' && (
+            <PermissionGuard permission="billing:create">
+              <DeleteBillingButton
+                billingId={billing.id}
+                billingLabel={billing.label}
+                projectId={project.id}
+                redirectAfterDelete={true}
+              />
+            </PermissionGuard>
+          )}
+          <BillingActions billing={billing} canFinalize={canFinalize} />
         </div>
       </div>
 
@@ -90,9 +116,7 @@ export default async function BillingDetailPage({
             <p className="text-xs text-muted-foreground">Total Billed</p>
             <p
               className={`text-2xl font-bold mt-1 ${
-                billing.totalModifiedHours !== billing.totalOriginalHours
-                  ? 'text-amber-600'
-                  : ''
+                billing.totalModifiedHours !== billing.totalOriginalHours ? 'text-amber-600' : ''
               }`}
             >
               {billing.totalModifiedHours.toFixed(1)}h
@@ -122,7 +146,7 @@ export default async function BillingDetailPage({
 
         <Card>
           <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground">Worklog Entries</p>
+            <p className="text-xs text-muted-foreground">Line Items</p>
             <p className="text-2xl font-bold mt-1">{billing.worklogCount}</p>
           </CardContent>
         </Card>
@@ -131,19 +155,45 @@ export default async function BillingDetailPage({
       {/* Worklogs section */}
       <div className="mt-8">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">Worklogs</h2>
+          <div>
+            <h2 className="text-lg font-semibold inline">Line Items</h2>
+            <span className="text-sm text-muted-foreground ml-2">
+              ({worklogs.length} {worklogs.length === 1 ? 'line item' : 'line items'})
+            </span>
+          </div>
           {billing.status === 'draft' && (
-            <p className="text-xs text-muted-foreground">Pull button coming in Batch 8</p>
+            <PullWorklogsButton
+              billingId={billing.id}
+              hasExistingWorklogs={worklogs.length > 0}
+            />
           )}
         </div>
 
-        <Card className="border-dashed">
-          <CardContent className="py-16 text-center">
-            <TableIcon className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground text-sm">Worklog editor coming in Batch 8.</p>
-          </CardContent>
-        </Card>
+        {billing.status !== 'draft' && (
+          <Alert className="mb-4">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              {billing.status === 'reviewed'
+                ? 'This billing is under review. Worklogs are read-only.'
+                : 'This billing is finalized. Worklogs are locked.'}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <WorklogEditorTable
+          billingId={billing.id}
+          billingStatus={billing.status}
+          worklogs={worklogs}
+          instanceUrl={instanceUrl}
+        />
       </div>
+
+      <WorklogSummaryFooter
+        originalTotal={billing.totalOriginalHours}
+        modifiedTotal={billing.totalModifiedHours}
+        worklogCount={billing.worklogCount}
+        billingLabel={billing.label}
+      />
     </div>
   )
 }

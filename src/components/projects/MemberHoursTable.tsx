@@ -8,7 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { formatHours } from '@/lib/jira/live-hours'
+import { formatHours } from '@/lib/jira/format-utils'
 import type { JiraMemberSummary } from '@/lib/jira/dashboard-types'
 
 interface MemberHoursTableProps {

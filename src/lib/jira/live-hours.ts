@@ -7,6 +7,29 @@ import type {
   JiraWorklogPreviewEntry,
   LiveHoursResult,
 } from '@/lib/jira/dashboard-types'
+import type {
+  OverviewTaskSummary,
+  OverviewTaskAuthorEntry,
+  OverviewAuthorSummary,
+  OverviewAuthorTaskEntry,
+  ProjectOverviewData,
+  OverviewResult,
+} from '@/lib/jira/overview-types'
+
+function formatDate(date: Date): string {
+  const y = date.getUTCFullYear()
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(date.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function resolveDefaultDates(startDate?: Date, endDate?: Date): { start: Date; end: Date } {
+  const now = new Date()
+  return {
+    start: startDate ?? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
+    end: endDate ?? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)),
+  }
+}
 
 /**
  * Fetches and aggregates live worklog data from Jira for a project.
@@ -21,12 +44,7 @@ export async function getLiveProjectHours(
     const config = await getDecryptedJiraConfig(projectId)
     if (!config) return { success: false, error: 'no_config' }
 
-    const now = new Date()
-    const resolvedEnd =
-      endDate ?? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0))
-    const resolvedStart =
-      startDate ?? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-
+    const { start: resolvedStart, end: resolvedEnd } = resolveDefaultDates(startDate, endDate)
     const entries = await fetchWorklogsForProject(config, resolvedStart, resolvedEnd)
 
     const totalSeconds = entries.reduce((sum, e) => sum + e.timeSpentSeconds, 0)
@@ -76,12 +94,9 @@ export async function getLiveProjectHours(
         comment: e.comment,
       }))
 
-    const projectKey = config.projectKey
-    const projectName = config.projectKey
-
     const summary: JiraProjectSummary = {
-      projectKey,
-      projectName,
+      projectKey: config.projectKey,
+      projectName: config.projectKey,
       totalSeconds,
       totalHours,
       memberSummaries,
@@ -97,32 +112,153 @@ export async function getLiveProjectHours(
 }
 
 /**
- * Formats a duration in seconds to a readable string e.g. '3h 20m'
+ * Fetches live worklogs and builds a full task + worklog-author overview for a project.
+ * Date range defaults to current month if not specified.
+ * Author = worklog author (person who logged time), never issue assignee.
  */
-export function formatHours(seconds: number): string {
-  if (seconds < 60) return '< 1m'
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  if (h === 0) return `${m}m`
-  if (m === 0) return `${h}h`
-  return `${h}h ${m}m`
-}
+export async function getProjectOverviewData(
+  projectId: string,
+  startDate?: Date,
+  endDate?: Date,
+): Promise<OverviewResult> {
+  try {
+    const config = await getDecryptedJiraConfig(projectId)
+    if (!config) return { success: false, error: 'no_config' }
 
-const shortDateFormatter = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-})
+    const { start: resolvedStart, end: resolvedEnd } = resolveDefaultDates(startDate, endDate)
+    const entries = await fetchWorklogsForProject(config, resolvedStart, resolvedEnd)
 
-const fullDateFormatter = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric',
-})
+    // Build task map keyed by issueKey
+    const tasksMap = new Map<
+      string,
+      {
+        issueKey: string
+        issueSummary: string
+        totalSeconds: number
+        authors: Map<
+          string,
+          { accountId: string; displayName: string; seconds: number; worklogCount: number }
+        >
+      }
+    >()
 
-export function formatDateShort(date: Date): string {
-  return shortDateFormatter.format(date)
-}
+    for (const entry of entries) {
+      let task = tasksMap.get(entry.issueKey)
+      if (!task) {
+        task = {
+          issueKey: entry.issueKey,
+          issueSummary: entry.issueSummary,
+          totalSeconds: 0,
+          authors: new Map(),
+        }
+        tasksMap.set(entry.issueKey, task)
+      }
+      task.totalSeconds += entry.timeSpentSeconds
 
-export function formatDateFull(date: Date): string {
-  return fullDateFormatter.format(date)
+      const authorEntry = task.authors.get(entry.authorJiraId)
+      if (authorEntry) {
+        authorEntry.seconds += entry.timeSpentSeconds
+        authorEntry.worklogCount += 1
+      } else {
+        task.authors.set(entry.authorJiraId, {
+          accountId: entry.authorJiraId,
+          displayName: entry.authorName,
+          seconds: entry.timeSpentSeconds,
+          worklogCount: 1,
+        })
+      }
+    }
+
+    // Build authors map keyed by authorJiraId
+    const authorsMap = new Map<
+      string,
+      {
+        accountId: string
+        displayName: string
+        totalSeconds: number
+        tasks: Map<string, { issueKey: string; issueSummary: string; seconds: number; worklogCount: number }>
+      }
+    >()
+
+    for (const entry of entries) {
+      let author = authorsMap.get(entry.authorJiraId)
+      if (!author) {
+        author = {
+          accountId: entry.authorJiraId,
+          displayName: entry.authorName,
+          totalSeconds: 0,
+          tasks: new Map(),
+        }
+        authorsMap.set(entry.authorJiraId, author)
+      }
+      author.totalSeconds += entry.timeSpentSeconds
+
+      const taskEntry = author.tasks.get(entry.issueKey)
+      if (taskEntry) {
+        taskEntry.seconds += entry.timeSpentSeconds
+        taskEntry.worklogCount += 1
+      } else {
+        author.tasks.set(entry.issueKey, {
+          issueKey: entry.issueKey,
+          issueSummary: entry.issueSummary,
+          seconds: entry.timeSpentSeconds,
+          worklogCount: 1,
+        })
+      }
+    }
+
+    const tasks: OverviewTaskSummary[] = Array.from(tasksMap.values())
+      .map((t) => {
+        const authors: OverviewTaskAuthorEntry[] = Array.from(t.authors.values())
+          .map((a) => ({ ...a, hours: Math.round(a.seconds / 36) / 100 }))
+          .sort((a, b) => b.seconds - a.seconds)
+        return {
+          issueKey: t.issueKey,
+          issueSummary: t.issueSummary,
+          totalSeconds: t.totalSeconds,
+          totalHours: Math.round(t.totalSeconds / 36) / 100,
+          worklogAuthorCount: t.authors.size,
+          authors,
+        }
+      })
+      .sort((a, b) => b.totalSeconds - a.totalSeconds)
+
+    const authors: OverviewAuthorSummary[] = Array.from(authorsMap.values())
+      .map((a) => {
+        const authorTasks: OverviewAuthorTaskEntry[] = Array.from(a.tasks.values())
+          .map((t) => ({ ...t, hours: Math.round(t.seconds / 36) / 100 }))
+          .sort((a, b) => b.seconds - a.seconds)
+        return {
+          accountId: a.accountId,
+          displayName: a.displayName,
+          totalSeconds: a.totalSeconds,
+          totalHours: Math.round(a.totalSeconds / 36) / 100,
+          taskCount: a.tasks.size,
+          tasks: authorTasks,
+        }
+      })
+      .sort((a, b) => b.totalSeconds - a.totalSeconds)
+
+    const totalSeconds = entries.reduce((sum, e) => sum + e.timeSpentSeconds, 0)
+
+    return {
+      success: true,
+      data: {
+        tasks,
+        authors,
+        totalSeconds,
+        totalHours: Math.round(totalSeconds / 36) / 100,
+        totalTasks: tasks.length,
+        totalAuthors: authors.length,
+        fetchedAt: new Date(),
+        dateRange: {
+          startDate: formatDate(resolvedStart),
+          endDate: formatDate(resolvedEnd),
+        },
+      },
+    }
+  } catch (err) {
+    console.error('[getProjectOverviewData] Unexpected error:', err)
+    return { success: false, error: 'fetch_failed' }
+  }
 }

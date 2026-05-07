@@ -45,7 +45,8 @@ export async function createProjectAction(
 
     revalidatePath('/dashboard')
     return { success: true, data: { id: project.id } }
-  } catch {
+  } catch (err) {
+    console.error('[createProjectAction] Failed:', err)
     return { success: false, error: 'Failed to create project' }
   }
 }

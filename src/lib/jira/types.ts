@@ -33,6 +33,8 @@ export interface JiraWorklogCommentText {
 export interface JiraWorklog {
   id: string
   issueId: string
+  // worklog author: the person who entered this time log.
+  // This is NOT the issue assignee. BillSync only tracks worklog authors.
   author: JiraUser
   created: string
   updated: string
@@ -55,9 +57,13 @@ export interface JiraIssue {
 }
 
 export interface JiraSearchResult {
-  startAt: number
-  maxResults: number
-  total: number
+  // POST /rest/api/3/search/jql uses cursor-based pagination.
+  // nextPageToken is absent when there are no more pages.
+  nextPageToken?: string
+  // Legacy fields (present on older endpoints, absent on /search/jql):
+  startAt?: number
+  maxResults?: number
+  total?: number
   issues: JiraIssue[]
 }
 

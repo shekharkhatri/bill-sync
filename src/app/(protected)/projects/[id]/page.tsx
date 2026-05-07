@@ -1,4 +1,3 @@
-import { Suspense } from 'react'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ChevronRight, Settings, CheckCircle2, AlertCircle, Plug, Receipt, Plus } from 'lucide-react'
@@ -11,21 +10,26 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 import { ProjectTabs } from '@/components/projects/ProjectTabs'
-import { LiveHoursPanel } from '@/components/projects/LiveHoursPanel'
-import { LiveHoursSkeleton } from '@/components/projects/LiveHoursSkeleton'
+import LiveHoursContainer from '@/components/projects/LiveHoursContainer'
+import { ProjectOverviewPanel } from '@/components/projects/ProjectOverviewPanel'
 import { RefreshButton } from '@/components/projects/RefreshButton'
 import { BillingCard } from '@/components/billings/BillingCard'
 import { PROJECT_COLORS } from '@/lib/projects/types'
+import { getDefaultPeriodFilter } from '@/lib/billings/period-filter-types'
+import { isDateRangeValid } from '@/lib/billings/date-utils'
 import type { ProjectColor } from '@/lib/projects/types'
+import type { DatePeriodFilter } from '@/lib/billings/period-filter-types'
 
 interface ProjectPageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ start?: string; end?: string; tab?: string }>
 }
 
 export default async function ProjectPage({
   params,
+  searchParams,
 }: ProjectPageProps): Promise<React.JSX.Element> {
-  const { id } = await params
+  const [{ id }, { start, end }] = await Promise.all([params, searchParams])
   const context = await getUserContext()
 
   if (!hasPermission(context, 'project:view')) {
@@ -42,6 +46,14 @@ export default async function ProjectPage({
 
   const instanceUrl = jiraConfig?.instanceUrl ?? ''
 
+  const defaultFilter = getDefaultPeriodFilter()
+  const initialFilter: DatePeriodFilter = (() => {
+    if (start && end && isDateRangeValid(start, end)) {
+      return { preset: 'custom', startDate: start, endDate: end }
+    }
+    return defaultFilter
+  })()
+
   const colorClass =
     project.color && project.color in PROJECT_COLORS
       ? PROJECT_COLORS[project.color as ProjectColor]
@@ -49,9 +61,17 @@ export default async function ProjectPage({
 
   const overviewContent =
     project.hasJiraConfig && project.jiraVerified ? (
-      <Suspense fallback={<LiveHoursSkeleton />}>
-        <LiveHoursPanel projectId={project.id} instanceUrl={instanceUrl} />
-      </Suspense>
+      <LiveHoursContainer
+        initialFilter={initialFilter}
+        filterKey={`${initialFilter.startDate}-${initialFilter.endDate}`}
+      >
+        <ProjectOverviewPanel
+          projectId={project.id}
+          instanceUrl={instanceUrl}
+          startDate={initialFilter.startDate}
+          endDate={initialFilter.endDate}
+        />
+      </LiveHoursContainer>
     ) : (
       <Card className="border-dashed">
         <CardContent className="py-16 text-center">

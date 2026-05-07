@@ -84,6 +84,9 @@ export interface WorklogTable {
   modified_seconds: number | null
   original_comment: string | null
   modified_comment: string | null
+  is_manual: Generated<boolean>
+  custom_summary: string | null
+  jira_reference_removed: Generated<boolean>
   created_at: Generated<Date>
   updated_at: Generated<Date>
 }

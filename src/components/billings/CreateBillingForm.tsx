@@ -18,8 +18,11 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import DatePeriodFilter from '@/components/shared/DatePeriodFilter'
 import { createBillingAction } from '@/lib/billings/actions'
-import { getCurrentMonthRange } from '@/lib/billings/date-utils'
+import { formatDateRange } from '@/lib/billings/date-utils'
+import { getDefaultPeriodFilter } from '@/lib/billings/period-filter-types'
+import type { DatePeriodFilter as DatePeriodFilterType } from '@/lib/billings/period-filter-types'
 
 const schema = z
   .object({
@@ -53,15 +56,14 @@ export function CreateBillingForm({ projectId }: CreateBillingFormProps): React.
     type: 'success' | 'warning' | 'info'
     text: string
   } | null>(null)
-
-  const defaults = getCurrentMonthRange()
+  const [periodFilter, setPeriodFilter] = useState<DatePeriodFilterType>(getDefaultPeriodFilter())
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       label: '',
-      startDate: defaults.startDate,
-      endDate: defaults.endDate,
+      startDate: getDefaultPeriodFilter().startDate,
+      endDate: getDefaultPeriodFilter().endDate,
     },
   })
 
@@ -123,35 +125,34 @@ export function CreateBillingForm({ projectId }: CreateBillingFormProps): React.
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="startDate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Start Date</FormLabel>
-              <FormControl>
-                <Input type="date" {...field} />
-              </FormControl>
-              <FormDescription>First day of the billing period.</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="endDate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>End Date</FormLabel>
-              <FormControl>
-                <Input type="date" {...field} />
-              </FormControl>
-              <FormDescription>Last day of the billing period (inclusive).</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Billing Period</label>
+          <DatePeriodFilter
+            value={periodFilter}
+            onChange={(filter) => {
+              setPeriodFilter(filter)
+              form.setValue('startDate', filter.startDate)
+              form.setValue('endDate', filter.endDate)
+            }}
+            disabled={isPending}
+          />
+          <FormField
+            control={form.control}
+            name="startDate"
+            render={() => <FormMessage />}
+          />
+          <FormField
+            control={form.control}
+            name="endDate"
+            render={() => <FormMessage />}
+          />
+          <p className="text-xs text-muted-foreground">
+            Worklogs will be pulled from Jira for:{' '}
+            <span className="font-medium text-foreground">
+              {formatDateRange(periodFilter.startDate, periodFilter.endDate)}
+            </span>
+          </p>
+        </div>
 
         {overlapWarning && (
           <Alert>

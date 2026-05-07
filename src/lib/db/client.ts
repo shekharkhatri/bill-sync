@@ -5,7 +5,12 @@ import { Kysely, PostgresDialect } from "kysely"
 import { DATABASE_URL } from "@/lib/env"
 import type { Database } from "@/lib/db/types"
 
-const pool = new Pool({ connectionString: DATABASE_URL })
+// Singleton keeps the pool alive across Next.js HMR reloads in dev,
+// preventing connection exhaustion against Supabase's session-mode cap.
+const globalForDb = globalThis as unknown as { _pgPool?: Pool }
+
+const pool = globalForDb._pgPool ?? new Pool({ connectionString: DATABASE_URL, max: 5 })
+if (process.env.NODE_ENV !== "production") globalForDb._pgPool = pool
 
 export const db = new Kysely<Database>({
   dialect: new PostgresDialect({ pool }),
