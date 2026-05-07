@@ -10,6 +10,7 @@ import {
   Loader2,
   RotateCcw,
   Save,
+  Trash2,
   Wrench,
 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -27,6 +28,8 @@ import {
 } from '@/components/ui/table'
 import { AddManualTaskDialog } from '@/components/billings/AddManualTaskDialog'
 import BillingTaskEditorRow from '@/components/billings/BillingTaskEditorRow'
+import HoursInput from '@/components/billings/HoursInput'
+import { Badge } from '@/components/ui/badge'
 import { updateTaskHoursAction, resetAllWorklogsAction, deleteManualTaskAction } from '@/lib/billings/actions'
 import type { BillingStatus, BillingTaskSummary } from '@/lib/billings/types'
 
@@ -236,49 +239,139 @@ export default function BillingTaskEditorTable({
         </Card>
       ) : (
         <>
-          <div className="rounded-md border overflow-hidden">
-            <div className="overflow-x-auto">
-              <Table className="table-fixed w-full">
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-36">Issue</TableHead>
-                    <TableHead>Summary</TableHead>
-                    <TableHead className="w-36 text-right">Original</TableHead>
-                    <TableHead className="w-44">Billed</TableHead>
-                    <TableHead className="w-6" />
-                    <TableHead className="w-12" />
-                  </TableRow>
-                </TableHeader>
+          {/* Mobile card list */}
+          <div className="md:hidden space-y-2">
+            {tasks.map((task) => {
+              const local = getLocalSeconds(task)
+              const isDirty = local !== null && local !== task.effectiveSeconds
+              const dbIsModified = task.effectiveSeconds !== task.totalOriginalSeconds
+              const hoursInputValue = local !== null ? local : dbIsModified ? task.effectiveSeconds : null
 
-                <TableBody>
-                  {tasks.map((task) => (
-                    <BillingTaskEditorRow
-                      key={task.jiraIssueKey}
-                      billingId={billingId}
-                      task={task}
-                      isEditable={isEditable}
-                      localSeconds={getLocalSeconds(task)}
-                      instanceUrl={instanceUrl}
-                      onHoursChange={(seconds) => handleHoursChange(task.jiraIssueKey, seconds)}
-                      onSummaryEdited={() => router.refresh()}
-                      onDeleteManual={handleDeleteManual}
-                      disabled={isBusy}
-                    />
-                  ))}
-                </TableBody>
+              return (
+                <Card key={task.jiraIssueKey} className={isDirty ? 'border-amber-300' : ''}>
+                  <CardContent className="pt-3 pb-3 space-y-2">
+                    {/* Header row: badge + actions */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {task.isManual ? (
+                          <Badge variant="secondary" className="text-xs">
+                            <Wrench className="h-3 w-3 mr-1" />
+                            Manual
+                          </Badge>
+                        ) : task.displayIssueKey ? (
+                          <a
+                            href={`${instanceUrl}/browse/${task.displayIssueKey}`}
+                            target="_blank"
+                            rel="noopener"
+                          >
+                            <Badge variant="outline" className="font-mono text-xs hover:bg-accent cursor-pointer">
+                              {task.displayIssueKey}
+                            </Badge>
+                          </a>
+                        ) : (
+                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                            Jira ref hidden
+                          </Badge>
+                        )}
+                        {isDirty && (
+                          <div className="h-2 w-2 rounded-full bg-amber-500" />
+                        )}
+                      </div>
+                      {isEditable && task.isManual && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteManual(task.jiraIssueKey)}
+                          disabled={isBusy}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
 
-                <TableFooter>
-                  <TableRow className="bg-muted/50 font-medium">
-                    <TableCell colSpan={3} className="text-right text-sm">Total</TableCell>
-                    <TableCell className="text-sm pl-3">
-                      {totalEffectiveHours.toFixed(2)}h
-                    </TableCell>
-                    <TableCell />
-                    <TableCell />
-                  </TableRow>
-                </TableFooter>
-              </Table>
+                    {/* Summary */}
+                    <p className="text-sm">{task.displaySummary}</p>
+
+                    {/* Hours row */}
+                    <div className="flex items-center gap-3 pt-1">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-0.5">Original</p>
+                        <p className="text-sm text-muted-foreground">
+                          {(task.totalOriginalSeconds / 3600).toFixed(2)}h
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-0.5">Billed</p>
+                        {isEditable ? (
+                          <HoursInput
+                            value={hoursInputValue}
+                            originalSeconds={task.totalOriginalSeconds}
+                            onChange={(seconds) => handleHoursChange(task.jiraIssueKey, seconds)}
+                            disabled={isBusy}
+                            max={9999}
+                          />
+                        ) : (
+                          <p className="text-sm font-medium">
+                            {(task.effectiveSeconds / 3600).toFixed(2)}h
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+
+            {/* Mobile total */}
+            <div className="flex justify-between items-center px-1 pt-1 border-t">
+              <span className="text-sm font-medium">Total</span>
+              <span className="text-sm font-medium">{totalEffectiveHours.toFixed(2)}h</span>
             </div>
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block rounded-md border overflow-hidden">
+            <Table className="table-fixed w-full">
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="w-36">Issue</TableHead>
+                  <TableHead>Summary</TableHead>
+                  <TableHead className="w-36 text-right">Original</TableHead>
+                  <TableHead className="w-44">Billed</TableHead>
+                  <TableHead className="w-6" />
+                  <TableHead className="w-12" />
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {tasks.map((task) => (
+                  <BillingTaskEditorRow
+                    key={task.jiraIssueKey}
+                    billingId={billingId}
+                    task={task}
+                    isEditable={isEditable}
+                    localSeconds={getLocalSeconds(task)}
+                    instanceUrl={instanceUrl}
+                    onHoursChange={(seconds) => handleHoursChange(task.jiraIssueKey, seconds)}
+                    onSummaryEdited={() => router.refresh()}
+                    onDeleteManual={handleDeleteManual}
+                    disabled={isBusy}
+                  />
+                ))}
+              </TableBody>
+
+              <TableFooter>
+                <TableRow className="bg-muted/50 font-medium">
+                  <TableCell colSpan={3} className="text-right text-sm">Total</TableCell>
+                  <TableCell className="text-sm pl-3">
+                    {totalEffectiveHours.toFixed(2)}h
+                  </TableCell>
+                  <TableCell />
+                  <TableCell />
+                </TableRow>
+              </TableFooter>
+            </Table>
           </div>
 
           {manualCount > 0 && (

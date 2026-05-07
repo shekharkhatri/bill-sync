@@ -73,7 +73,14 @@ export default function BillingTaskEditorRow({
 
       {/* Summary */}
       <TableCell className="align-top">
-        <p className="text-sm w-20 truncate">{task.displaySummary}</p>
+        <Tooltip>
+          <TooltipTrigger render={<p className="text-sm truncate cursor-default" />}>
+            {task.displaySummary}
+          </TooltipTrigger>
+          <TooltipContent className="max-w-sm whitespace-normal">
+            {task.displaySummary}
+          </TooltipContent>
+        </Tooltip>
         {isEditable && (
           <div className="mt-0.5">
             <EditTaskSummaryDialog
