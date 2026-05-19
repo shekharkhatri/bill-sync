@@ -15,8 +15,9 @@ Kysely types: src/lib/db/types.ts (manually maintained — run codegen if schema
 | project_jira_configs | uuid | project_id → projects                      | encrypted_api_token AES-256  |
 | billings             | uuid | project_id → projects                      | status: draft→reviewed→final |
 | worklogs             | uuid | billing_id → billings                      | snapshot, not live Jira data |
-| export_logs          | uuid | billing_id → billings                      | audit trail for xlsx exports |
+| export_logs          | uuid | billing_id → billings                      | audit trail for csv exports  |
 | allowed_emails       | uuid | —                                          | login allowlist              |
+| billing_share_tokens | uuid | billing_id → billings                      | token unique idx, is_active flag |
 
 ## Worklog Columns (key ones)
 | Column                 | Type    | Notes                                         |
@@ -36,6 +37,10 @@ effectiveComment = modified_comment          ← NO fallback to original_comment
 displaySummary   = custom_summary ?? issue_summary ?? jira_issue_key
 displayIssueKey  = jira_reference_removed ? null : jira_issue_key
 ```
+
+## billing_share_tokens Key Columns
+`token` (URL-safe base64, 43 chars, 256-bit entropy), `is_active` (revoke by setting false),
+`expires_at` (null = no expiry), `billing_id` → billings ON DELETE CASCADE
 
 ## project_jira_configs Key Columns
 `instance_url`, `jira_project_key`, `user_email`, `encrypted_api_token`,

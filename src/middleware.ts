@@ -36,6 +36,8 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const isProtected = pathname.startsWith("/(protected)") ||
     (pathname !== "/login" &&
       !pathname.startsWith("/api/auth") &&
+      !pathname.startsWith("/api/share") &&
+      !pathname.startsWith("/share") &&
       !pathname.startsWith("/_next") &&
       pathname !== "/favicon.ico" &&
       pathname !== "/")

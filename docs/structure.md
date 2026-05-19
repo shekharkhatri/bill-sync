@@ -22,8 +22,12 @@ src/app/
         billings/
           new/page.tsx                  ← CreateBillingForm
           [billingId]/page.tsx          ← billing editor (WorklogEditorTable active)
+  share/
+    [token]/page.tsx                    ← public shared billing view (no auth)
   api/
     auth/callback/route.ts              ← OAuth exchange + bootstrapUser
+    billings/[id]/export/route.ts       ← CSV download RH ✓
+    share/[token]/export/route.ts       ← public CSV export via share token
 ```
 
 ## Lib
@@ -68,7 +72,12 @@ src/lib/
   crypto/
     encryption.ts               ← encrypt, decrypt, maskToken SERVER ONLY
   export/
-    (empty — xlsx.ts pending Batch 9)
+    csv.ts                ← CSV billing export, buildBillingCSV, buildSharedBillingCSV, getCSVFilename
+  share/
+    types.ts              ← SharedBillingView, SharedTaskRow, BillingShareToken
+    token.ts              ← generateShareToken, isTokenExpired SERVER ONLY
+    queries.ts            ← getShareToken, createShareToken, revokeShareToken, getSharedBillingView
+    actions.ts            ← generateShareLinkAction, revokeShareLinkAction SA
 ```
 
 ## Components
@@ -104,7 +113,7 @@ src/components/
     CreateBillingForm.tsx        ← CC, DatePeriodFilter integrated
     WorklogEditorTable.tsx       ← CC, active billing editor (raw per-row)
     WorklogEditorRow.tsx         ← CC, single worklog row
-    BillingTaskEditorTable.tsx   ← CC, task-aggregated editor (built, not active)
+    BillingTaskEditorTable.tsx   ← CC, task-aggregated editor (active)
     BillingTaskEditorRow.tsx     ← CC, single task row (for BillingTaskEditorTable)
     HoursInput.tsx               ← CC, decimal hours → seconds conversion input
     PullWorklogsButton.tsx       ← CC, first-pull vs re-pull with confirm dialog
@@ -115,5 +124,9 @@ src/components/
     AddManualTaskDialog.tsx      ← CC, legacy (for BillingTaskEditorTable)
     EditWorklogSummaryDialog.tsx ← CC, edit row summary + remove Jira link
     EditTaskSummaryDialog.tsx    ← CC, legacy (for BillingTaskEditorTable)
+    ExportButton.tsx             ← CC, fetch CSV → blob → programmatic download
+    ShareLinkManager.tsx         ← CC, generate/revoke shareable link, copy URL
+  share/
+    SharedExportButton.tsx       ← CC, public CSV export via share token (no auth headers)
   ui/                            ← Shadcn/ui components (generated, do not edit)
 ```

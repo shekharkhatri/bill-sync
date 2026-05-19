@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server"
-import { createActionClient } from "@/lib/auth/clients"
+import { NextRequest, NextResponse } from "next/server"
+import { createServerClient } from "@supabase/ssr"
 import { bootstrapUser } from "@/lib/auth/bootstrap"
 import { isEmailAllowed } from "@/lib/auth/allowlist"
-import { APP_URL } from "@/lib/env"
+import { APP_URL, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/env"
 
-export async function GET(request: Request): Promise<Response> {
+export async function GET(request: NextRequest): Promise<Response> {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get("code")
 
@@ -12,7 +12,24 @@ export async function GET(request: Request): Promise<Response> {
     return NextResponse.redirect(new URL("/login?error=auth_failed", APP_URL))
   }
 
-  const supabase = await createActionClient()
+  // Route Handlers must read cookies from the Request and write them onto the
+  // Response explicitly. Using next/headers cookies() here doesn't attach the
+  // session cookies to the redirect response, so the browser never gets the
+  // session — causing a redirect loop back to /login in production.
+  let response = NextResponse.redirect(new URL("/dashboard", APP_URL))
+
+  const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options)
+        })
+      },
+    },
+  })
 
   const { error } = await supabase.auth.exchangeCodeForSession(code)
 
@@ -31,5 +48,5 @@ export async function GET(request: Request): Promise<Response> {
 
   await bootstrapUser(user)
 
-  return NextResponse.redirect(new URL("/dashboard", APP_URL))
+  return response
 }

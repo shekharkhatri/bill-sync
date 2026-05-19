@@ -1,14 +1,21 @@
 # API Routes
 
 ## Route Handlers
-| Method | Path                      | Auth | Purpose                         |
-|--------|---------------------------|------|---------------------------------|
-| GET    | /api/auth/callback        | —    | OAuth code exchange + bootstrap |
-
-Pending (Batch 9):
-| GET    | /api/billings/[id]/export | ✓    | xlsx file download              |
+| Method | Path                           | Auth   | Purpose                                              |
+|--------|--------------------------------|--------|------------------------------------------------------|
+| GET    | /api/auth/callback             | —      | OAuth code exchange + bootstrap                      |
+| GET    | /api/billings/[id]/export      | ✓      | CSV download, logs to export_logs                    |
+| GET    | /api/share/[token]/export      | public | CSV export via share token, logs format='csv-shared' |
 
 All other mutations go through Server Actions (not RH).
+
+## Export Route Detail
+Auth: session check (`supabase.auth.getUser()`) + `guardAction('billing:export')`
+Available: `billing.status` in `('reviewed', 'finalized')`
+Output: `text/csv; charset=utf-8`, `Content-Disposition: attachment`
+Filename: `{client}-{label}-billing.csv`
+Logging: inserts into `export_logs` (fire and forget, non-blocking)
+Builder: `src/lib/export/csv.ts` → `buildBillingCSV()`
 
 ## Auth Callback (/api/auth/callback/route.ts)
 ```
@@ -23,6 +30,11 @@ On any error: redirect `/login?error=server_error`.
 ## Error Responses
 All RH return `Response.json({ error: string }, { status: N })`.
 401 if no session · 403 if insufficient permission · 404 if not found · 500 on throw.
+
+## Share Token Routes (Public)
+Auth: token-based only — no session. `getSharedBillingView()` validates token.
+Token invalid/revoked/expired → 403. Never reveal why (treat all as same error).
+Rate limiting: not yet implemented — see comment in `src/app/api/share/[token]/export/route.ts`.
 
 ## No RH for Mutations
 All create/update/delete operations use Server Actions.

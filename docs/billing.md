@@ -80,6 +80,7 @@ Calls `updateWorklogSummaryAction(worklogId, customSummary, removeJiraReference)
 `deleteWorklogRow(worklogId)`
 `insertManualTask`, `updateTaskSummary`, `deleteManualTask` (legacy task-level)
 `getBillingTaskSummaries` → used by BillingTaskEditorTable
+`getTaskNotes(billingId)` → `Record<string, string | null>` keyed by jiraIssueKey, used for CSV export
 `checkBillingOverlap` → warns but does not block on overlap
 
 ## worklog-store.ts (CC-safe)
@@ -88,7 +89,24 @@ Pure functions for client-side editor state — no server imports.
 `applyWorklogEdit`, `resetWorklogEdit`, `resetAllEdits`, `getDirtyUpdates`
 `isDirty = modifiedSeconds !== null || modifiedComment !== null`
 
-## Export (pending Batch 9)
-RH: GET /api/billings/[id]/export
-Server-side xlsx via ExcelJS. Logged in export_logs.
-Available from reviewed or finalized status.
+## Export
+Route Handler: `GET /api/billings/[id]/export`
+Format: CSV (text/csv, UTF-8, CRLF line endings)
+Builder: `src/lib/export/csv.ts` → `buildBillingCSV()`
+Available: reviewed or finalized status
+Contains: metadata block, summary, one row per task with internal note
+Logging: `export_logs` (billing_id, exported_by, format='csv')
+Filename: `{sanitized-client}-{sanitized-label}-billing.csv`
+Trigger: `ExportButton` CC → `fetch()` → blob → programmatic `<a>` download
+
+## Shareable Links
+Table: `billing_share_tokens` (one active token per billing at a time)
+Available: reviewed or finalized billings only (draft blocked in action)
+Permission: `billing:finalize` required to generate or revoke
+Token: 43-char URL-safe base64, ~256-bit entropy, generated server-side via `node:crypto`
+URL format: `{APP_URL}/share/{token}`
+Revoke: `revokeShareToken()` sets `is_active = false` — link stops working immediately
+Public page: `src/app/share/[token]/page.tsx` — no auth, noindex robots meta
+Public export: `GET /api/share/[token]/export` — CSV, logs `format='csv-shared'`
+Manager UI: `ShareLinkManager` CC on billing detail page (permission-gated via PermissionGuard)
+One active link per billing — generating a new link revokes the previous one

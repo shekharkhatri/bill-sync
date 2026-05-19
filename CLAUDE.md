@@ -81,16 +81,14 @@ Confirm at end of response: "Docs updated: {files}"
 | 6     | Live hours, overview panel         | ✓ done    |
 | 7     | Billing module, worklog pull       | ✓ done    |
 | 8     | Worklog editor, status workflow    | ✓ done    |
-| 9     | Export xlsx                        | ⏳ pending |
+| 9     | CSV export, ExportButton, export_logs | ✓ done  |
 | 10    | Polish, toasts, error boundaries   | ⏳ pending |
 | HF    | Jira POST /search/jql + pagination | ✓ done    |
 | HF    | Billing editor UI overhaul         | ✓ done    |
 | HF    | Manual rows, row-level summary edit| ✓ done    |
 | HF    | Dev auth bypass (existing user)    | ✓ done    |
+| HF    | Shareable billing invoice links    | ✓ done    |
 
 ## Known Pending
-- Batch 9: xlsx export — src/lib/export/ dir exists, xlsx.ts not yet created
 - Batch 10: Toaster in layout, error boundaries on all pages
-- WorklogEditorTable: raw per-row view (active editor on billing detail page)
-- BillingTaskEditorTable: task-aggregated view built, not yet wired to billing page
 - getLiveProjectHours: legacy, kept alongside getProjectOverviewData

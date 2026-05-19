@@ -106,6 +106,16 @@ export interface AllowedEmailTable {
   created_at: Generated<Date>
 }
 
+export interface BillingShareTokenTable {
+  id: Generated<string>
+  billing_id: string
+  token: string
+  created_by: string | null
+  created_at: Generated<Date>
+  expires_at: Date | null
+  is_active: Generated<boolean>
+}
+
 export interface Database {
   roles: RoleTable
   permissions: PermissionTable
@@ -118,4 +128,5 @@ export interface Database {
   worklogs: WorklogTable
   export_logs: ExportLogTable
   allowed_emails: AllowedEmailTable
+  billing_share_tokens: BillingShareTokenTable
 }

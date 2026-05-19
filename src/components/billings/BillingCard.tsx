@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { CalendarRange } from 'lucide-react'
+import { CalendarRange, FileDown } from 'lucide-react'
 import {
   Card,
   CardContent,
@@ -73,6 +73,11 @@ export function BillingCard({ billing, projectId }: BillingCardProps): React.JSX
               projectId={projectId}
               redirectAfterDelete={false}
             />
+          ) : billing.status === 'finalized' ? (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <FileDown className="h-3 w-3" />
+              <span>Export available</span>
+            </div>
           ) : (
             <div />
           )}

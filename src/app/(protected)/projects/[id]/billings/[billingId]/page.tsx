@@ -5,6 +5,7 @@ import { getUserContext, hasPermission } from '@/lib/auth/permissions'
 import { getProjectById } from '@/lib/projects/queries'
 import { getBillingWithStats, getBillingTaskSummaries } from '@/lib/billings/queries'
 import { getJiraConfigForDisplay } from '@/lib/jira/queries'
+import { getShareToken } from '@/lib/share/queries'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -13,9 +14,11 @@ import { formatDateFull } from '@/lib/jira/format-utils'
 import { BILLING_STATUS_LABELS, BILLING_STATUS_VARIANTS } from '@/lib/billings/types'
 import BillingActions from '@/components/billings/BillingActions'
 import DeleteBillingButton from '@/components/billings/DeleteBillingButton'
+import ExportButton from '@/components/billings/ExportButton'
 import PullWorklogsButton from '@/components/billings/PullWorklogsButton'
 import BillingTaskEditorTable from '@/components/billings/BillingTaskEditorTable'
 import WorklogSummaryFooter from '@/components/billings/WorklogSummaryFooter'
+import ShareLinkManager from '@/components/billings/ShareLinkManager'
 import { PermissionGuard } from '@/components/shared/PermissionGuard'
 
 interface BillingDetailPageProps {
@@ -38,9 +41,10 @@ export default async function BillingDetailPage({
   const project = await getProjectById(billing.projectId)
   if (!project) notFound()
 
-  const [tasks, jiraConfig] = await Promise.all([
+  const [tasks, jiraConfig, shareToken] = await Promise.all([
     getBillingTaskSummaries(billingId),
     getJiraConfigForDisplay(billing.projectId),
+    getShareToken(billingId),
   ])
 
   const instanceUrl = jiraConfig?.instanceUrl ?? ''
@@ -85,7 +89,7 @@ export default async function BillingDetailPage({
           </Badge>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {billing.status === 'draft' && (
             <PermissionGuard permission="billing:create">
               <DeleteBillingButton
@@ -96,6 +100,10 @@ export default async function BillingDetailPage({
               />
             </PermissionGuard>
           )}
+          <ExportButton
+            billingId={billing.id}
+            billingStatus={billing.status}
+          />
           <BillingActions billing={billing} canFinalize={canFinalize} />
         </div>
       </div>
@@ -151,6 +159,17 @@ export default async function BillingDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* Share link manager */}
+      <PermissionGuard permission="billing:finalize">
+        <div className="mt-6">
+          <ShareLinkManager
+            billingId={billing.id}
+            billingStatus={billing.status}
+            existingToken={shareToken}
+          />
+        </div>
+      </PermissionGuard>
 
       {/* Worklogs section */}
       <div className="mt-8">

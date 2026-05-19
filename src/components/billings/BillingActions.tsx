@@ -110,10 +110,10 @@ export default function BillingActions({
         )}
 
         {billing.status === 'finalized' && (
-          <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Lock className="h-3.5 w-3.5" />
-            Finalized — Export available below
-          </span>
+            <span>Billing finalized</span>
+          </div>
         )}
       </div>
 

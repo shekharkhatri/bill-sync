@@ -116,6 +116,23 @@ CREATE TABLE export_logs (
   format      TEXT DEFAULT 'xlsx'
 );
 
+-- BILLING SHARE TOKENS
+CREATE TABLE billing_share_tokens (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  billing_id   UUID NOT NULL REFERENCES billings(id) ON DELETE CASCADE,
+  token        TEXT NOT NULL UNIQUE,   -- cryptographically random, URL-safe
+  created_by   UUID REFERENCES users(id),
+  created_at   TIMESTAMPTZ DEFAULT now(),
+  expires_at   TIMESTAMPTZ,            -- null = no expiry
+  is_active    BOOLEAN NOT NULL DEFAULT true
+);
+
+CREATE INDEX idx_billing_share_tokens_token ON billing_share_tokens(token);
+CREATE INDEX idx_billing_share_tokens_billing ON billing_share_tokens(billing_id);
+
+-- Migration (run if table already exists):
+-- ALTER TABLE billing_share_tokens ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+
 -- SEED: Admin role and all permissions
 INSERT INTO roles (name, description)
 VALUES ('admin', 'Full access to all features');

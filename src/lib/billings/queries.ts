@@ -507,5 +507,34 @@ export async function deleteWorklogRow(worklogId: string): Promise<void> {
   }
 }
 
+/**
+ * Returns the internal note for each task in a billing, keyed by jira_issue_key.
+ * Used for CSV export. Returns the first non-null modified_comment per task.
+ */
+export async function getTaskNotes(
+  billingId: string,
+): Promise<Record<string, string | null>> {
+  try {
+    const rows = await db
+      .selectFrom('worklogs')
+      .select([
+        'jira_issue_key',
+        sql<string | null>`MAX(modified_comment)`.as('modified_comment'),
+      ])
+      .where('billing_id', '=', billingId)
+      .groupBy('jira_issue_key')
+      .execute()
+
+    const result: Record<string, string | null> = {}
+    for (const row of rows) {
+      result[row.jira_issue_key] = row.modified_comment ?? null
+    }
+    return result
+  } catch (err) {
+    console.error('[getTaskNotes] Failed:', err)
+    return {}
+  }
+}
+
 // Re-export parseDateString for use in actions
 export { parseDateString }
