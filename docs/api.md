@@ -31,6 +31,15 @@ On any error: redirect `/login?error=server_error`.
 All RH return `Response.json({ error: string }, { status: N })`.
 401 if no session · 403 if insufficient permission · 404 if not found · 500 on throw.
 
+## Share Token Export Detail (/api/share/[token]/export)
+Auth: token-based only — no session. `getSharedBillingView()` validates token.
+Token invalid/revoked/expired → 403. Never reveal why (treat all as same error).
+`csv_enabled=false` on token → 403 `"CSV export is not enabled for this shared link."` (checked before building CSV).
+Output columns: Task, Jira Issue, Hours — no original hours, no internal notes, no status.
+Filename: `{client}-{label}-worklog.csv`
+Builder: `src/lib/export/csv.ts` → `buildSharedBillingCSV()`
+Rate limiting: not yet implemented — see comment in `src/app/api/share/[token]/export/route.ts`.
+
 ## Share Token Routes (Public)
 Auth: token-based only — no session. `getSharedBillingView()` validates token.
 Token invalid/revoked/expired → 403. Never reveal why (treat all as same error).

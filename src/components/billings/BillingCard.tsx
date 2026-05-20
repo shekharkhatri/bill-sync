@@ -1,17 +1,6 @@
 import Link from 'next/link'
-import { CalendarRange, FileDown } from 'lucide-react'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { formatDateFull } from '@/lib/jira/format-utils'
-import { BILLING_STATUS_LABELS, BILLING_STATUS_VARIANTS } from '@/lib/billings/types'
+import { BILLING_STATUS_LABELS } from '@/lib/billings/types'
 import DeleteBillingButton from '@/components/billings/DeleteBillingButton'
 import type { BillingWithStats } from '@/lib/billings/types'
 
@@ -20,77 +9,95 @@ interface BillingCardProps {
   projectId: string
 }
 
+function statusPillClass(status: BillingWithStats['status']): string {
+  switch (status) {
+    case 'finalized':
+      return 'bg-success-50 text-success-600 border border-success-200'
+    case 'reviewed':
+      return 'bg-blue-50 text-blue-600 border border-blue-200'
+    case 'draft':
+    default:
+      return 'bg-gray-100 text-gray-600 border border-gray-200'
+  }
+}
+
 export function BillingCard({ billing, projectId }: BillingCardProps): React.JSX.Element {
   const isModified = billing.totalModifiedHours !== billing.totalOriginalHours
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="flex flex-row justify-between items-start">
-        <div>
-          <CardTitle className="text-base font-semibold">{billing.label}</CardTitle>
-          <CardDescription>
-            <span className="flex items-center gap-1.5 mt-1 text-xs">
-              <CalendarRange className="h-3.5 w-3.5" />
-              {formatDateFull(billing.startDate)} → {formatDateFull(billing.endDate)}
-            </span>
-          </CardDescription>
-        </div>
-        <Badge variant={BILLING_STATUS_VARIANTS[billing.status]}>
-          {BILLING_STATUS_LABELS[billing.status]}
-        </Badge>
-      </CardHeader>
+    <tr className="h-14 hover:bg-gray-50 transition-colors border-b border-border last:border-0 group">
+      {/* Period label */}
+      <td className="px-4">
+        <p className="text-sm font-medium">{billing.label}</p>
+      </td>
 
-      <CardContent>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-xs text-muted-foreground">Logged</p>
-            <p className="text-xl font-bold">{billing.totalOriginalHours.toFixed(1)}h</p>
-            <p className="text-xs text-muted-foreground">original</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Billed</p>
-            <p
-              className={`text-xl font-bold ${isModified ? 'text-amber-600' : ''}`}
-            >
-              {billing.totalModifiedHours.toFixed(1)}h
-            </p>
-            <p className="text-xs text-muted-foreground">after edits</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Entries</p>
-            <p className="text-xl font-bold">{billing.worklogCount}</p>
-            <p className="text-xs text-muted-foreground">worklogs</p>
-          </div>
-        </div>
-      </CardContent>
+      {/* Date range */}
+      <td className="px-4 text-sm text-muted-foreground whitespace-nowrap">
+        {formatDateFull(billing.startDate)} – {formatDateFull(billing.endDate)}
+      </td>
 
-      <CardFooter className="border-t pt-3 flex justify-between items-center">
-        <div>
-          {billing.status === 'draft' ? (
-            <DeleteBillingButton
-              billingId={billing.id}
-              billingLabel={billing.label}
-              projectId={projectId}
-              redirectAfterDelete={false}
-            />
-          ) : billing.status === 'finalized' ? (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <FileDown className="h-3 w-3" />
-              <span>Export available</span>
-            </div>
-          ) : (
-            <div />
-          )}
-        </div>
-        <Button
-          variant="default"
-          size="sm"
-          nativeButton={false}
-          render={<Link href={`/projects/${projectId}/billings/${billing.id}`} />}
+      {/* Status */}
+      <td className="px-4 w-28">
+        <span
+          className={`inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-sm ${statusPillClass(billing.status)}`}
         >
-          Open Billing
-        </Button>
-      </CardFooter>
-    </Card>
+          {BILLING_STATUS_LABELS[billing.status]}
+        </span>
+      </td>
+
+      {/* Logged */}
+      <td className="px-4 w-28">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-0.5">
+          Logged
+        </p>
+        <p className="text-sm font-semibold tabular-nums">
+          {billing.totalOriginalHours.toFixed(1)}h
+        </p>
+      </td>
+
+      {/* Billed */}
+      <td className="px-4 w-28">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-0.5">
+          Billed
+        </p>
+        <p
+          className={`text-sm font-semibold tabular-nums ${
+            isModified ? 'text-blue-600' : ''
+          }`}
+        >
+          {billing.totalModifiedHours.toFixed(1)}h
+        </p>
+      </td>
+
+      {/* Entries */}
+      <td className="px-4 w-24">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-0.5">
+          Entries
+        </p>
+        <p className="text-sm font-semibold tabular-nums">{billing.worklogCount}</p>
+      </td>
+
+      {/* Actions */}
+      <td className="px-4 w-32 text-right">
+        <div className="flex items-center justify-end gap-3">
+          {billing.status === 'draft' && (
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+              <DeleteBillingButton
+                billingId={billing.id}
+                billingLabel={billing.label}
+                projectId={projectId}
+                redirectAfterDelete={false}
+              />
+            </div>
+          )}
+          <Link
+            href={`/projects/${projectId}/billings/${billing.id}`}
+            className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors whitespace-nowrap"
+          >
+            Open →
+          </Link>
+        </div>
+      </td>
+    </tr>
   )
 }

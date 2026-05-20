@@ -21,6 +21,12 @@ export default function SharedExportButton({
     try {
       const response = await fetch(`/api/share/${tokenValue}/export`)
 
+      if (response.status === 403) {
+        const data = await response.json().catch(() => ({})) as { error?: string }
+        setError(data.error ?? 'CSV export has been disabled for this link.')
+        return
+      }
+
       if (response.ok) {
         const blob = await response.blob()
         const url = URL.createObjectURL(blob)
@@ -51,18 +57,18 @@ export default function SharedExportButton({
   return (
     <div className="flex flex-col items-end gap-1">
       <Button
-        variant="outline"
+        variant="ghost"
         size="sm"
         onClick={handleExport}
         disabled={isExporting}
-        className="gap-2"
+        className="gap-1.5 text-[13px]"
       >
         {isExporting ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : (
-          <Download className="h-4 w-4" />
+          <Download className="h-3.5 w-3.5" />
         )}
-        {isExporting ? 'Exporting...' : 'Export CSV'}
+        {isExporting ? 'Exporting…' : 'Export CSV'}
       </Button>
 
       {error && <p className="text-xs text-destructive">{error}</p>}

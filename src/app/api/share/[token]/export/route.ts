@@ -24,20 +24,31 @@ export async function GET(
       )
     }
 
-    // 2. Build CSV from shared view types directly
+    // 2. Check csv_enabled flag — owner may have disabled CSV export for this link
+    if (!view.csvEnabled) {
+      return Response.json(
+        { error: 'CSV export is not enabled for this shared link.' },
+        { status: 403 },
+      )
+    }
+
+    // 3. Build CSV from shared view types directly (no internal notes, no original hours)
+    const dateRange = `${view.billing.startDate.toISOString().slice(0, 10)} – ${view.billing.endDate.toISOString().slice(0, 10)}`
     const csv = buildSharedBillingCSV(
       view.project.name,
       view.project.clientName,
-      view.billing,
+      view.billing.label,
+      dateRange,
+      view.billing.totalModifiedHours,
       view.tasks,
     )
 
-    // 3. Generate filename
+    // 4. Generate filename
     const sanitize = (s: string): string =>
       s.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '')
-    const filename = `${sanitize(view.project.clientName)}-${sanitize(view.billing.label)}-billing.csv`
+    const filename = `${sanitize(view.project.clientName)}-${sanitize(view.billing.label)}-worklog.csv`
 
-    // 4. Log the export — fire and forget, non-blocking
+    // 5. Log the export — fire and forget, non-blocking
     db.insertInto('export_logs')
       .values({
         billing_id: view.billing.id,
@@ -47,7 +58,7 @@ export async function GET(
       .execute()
       .catch((err: unknown) => console.error('[share-export] Log failed:', err))
 
-    // 5. Return CSV response
+    // 6. Return CSV response
     return new Response(csv, {
       status: 200,
       headers: {

@@ -1,10 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { LayoutList, Users } from 'lucide-react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 import { TaskListView } from '@/components/projects/overview/TaskListView'
 import { TaskDetailSheet } from '@/components/projects/overview/TaskDetailSheet'
 import { formatDateRange } from '@/lib/billings/date-utils'
@@ -31,56 +28,88 @@ export function OverviewTabs({
 
   return (
     <>
-      {/* Summary strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        {[
-          { label: 'Total Hours', value: data.totalHours.toFixed(2) + 'h' },
-          { label: 'Tasks', value: String(data.totalTasks) },
-          { label: 'Worklog Authors', value: String(data.totalAuthors) },
-          { label: 'Period', value: periodLabel },
-        ].map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="pt-4 pb-3">
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
-              <p className="text-2xl font-bold tabular-nums mt-1">{stat.value}</p>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Inline stat row — 48px, divided, no card borders */}
+      <div className="flex items-stretch h-12 border border-border rounded-md mb-4 divide-x divide-border overflow-hidden">
+        <div className="flex flex-col justify-center px-5 min-w-0">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium leading-none mb-1">
+            Total Hours
+          </span>
+          <span className="text-base font-semibold tabular-nums leading-none">
+            {data.totalHours.toFixed(1)}h
+          </span>
+        </div>
+        <div className="flex flex-col justify-center px-5 min-w-0">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium leading-none mb-1">
+            Tasks
+          </span>
+          <span className="text-base font-semibold tabular-nums leading-none">
+            {data.totalTasks}
+          </span>
+        </div>
+        <div className="flex flex-col justify-center px-5 min-w-0">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium leading-none mb-1">
+            Authors
+          </span>
+          <span className="text-base font-semibold tabular-nums leading-none">
+            {data.totalAuthors}
+          </span>
+        </div>
+        <div className="flex flex-col justify-center px-5 min-w-0 flex-1">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium leading-none mb-1">
+            Period
+          </span>
+          <span className="text-sm tabular-nums text-muted-foreground leading-none truncate">
+            {periodLabel}
+          </span>
+        </div>
       </div>
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(v) => setActiveTab(v as typeof activeTab)}
-      >
-        <TabsList className="mb-1">
-          <TabsTrigger value="tasks">
-            <LayoutList className="h-3.5 w-3.5 mr-1.5" />
-            By Task
-            <Badge variant="secondary" className="ml-2 text-xs">
-              {data.totalTasks}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="authors">
-            <Users className="h-3.5 w-3.5 mr-1.5" />
-            By Worklog Author
-            <Badge variant="secondary" className="ml-2 text-xs">
-              {data.totalAuthors}
-            </Badge>
-          </TabsTrigger>
-        </TabsList>
+      {/* Underline tabs */}
+      <div className="flex border-b border-border mb-0">
+        <button
+          type="button"
+          className={cn(
+            'px-4 h-10 text-[13px] font-medium border-b-2 -mb-px transition-colors',
+            activeTab === 'tasks'
+              ? 'border-primary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground',
+          )}
+          onClick={() => setActiveTab('tasks')}
+        >
+          By Task
+          <span className="ml-2 text-[11px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded tabular-nums">
+            {data.totalTasks}
+          </span>
+        </button>
+        <button
+          type="button"
+          className={cn(
+            'px-4 h-10 text-[13px] font-medium border-b-2 -mb-px transition-colors',
+            activeTab === 'authors'
+              ? 'border-primary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground',
+          )}
+          onClick={() => setActiveTab('authors')}
+        >
+          By Worklog Author
+          <span className="ml-2 text-[11px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded tabular-nums">
+            {data.totalAuthors}
+          </span>
+        </button>
+      </div>
 
-        <TabsContent value="tasks" className="mt-3">
+      {/* Tab content */}
+      <div className="mt-0 pt-4">
+        {activeTab === 'tasks' ? (
           <TaskListView
             tasks={data.tasks}
             instanceUrl={instanceUrl}
             onTaskClick={(task) => setSelectedTask(task)}
           />
-        </TabsContent>
-
-        <TabsContent value="authors" className="mt-3">
-          {authorContent}
-        </TabsContent>
-      </Tabs>
+        ) : (
+          authorContent
+        )}
+      </div>
 
       <TaskDetailSheet
         task={selectedTask}

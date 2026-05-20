@@ -132,6 +132,7 @@ CREATE INDEX idx_billing_share_tokens_billing ON billing_share_tokens(billing_id
 
 -- Migration (run if table already exists):
 -- ALTER TABLE billing_share_tokens ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+-- ALTER TABLE billing_share_tokens ADD COLUMN IF NOT EXISTS csv_enabled BOOLEAN NOT NULL DEFAULT true;
 
 -- SEED: Admin role and all permissions
 INSERT INTO roles (name, description)

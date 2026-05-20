@@ -114,6 +114,7 @@ export interface BillingShareTokenTable {
   created_at: Generated<Date>
   expires_at: Date | null
   is_active: Generated<boolean>
+  csv_enabled: Generated<boolean>
 }
 
 export interface Database {

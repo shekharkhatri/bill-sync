@@ -88,6 +88,7 @@ Confirm at end of response: "Docs updated: {files}"
 | HF    | Manual rows, row-level summary edit| ✓ done    |
 | HF    | Dev auth bypass (existing user)    | ✓ done    |
 | HF    | Shareable billing invoice links    | ✓ done    |
+| HF    | Worklog preview page fixes + CSV toggle | ✓ done |
 
 ## Known Pending
 - Batch 10: Toaster in layout, error boundaries on all pages

@@ -1,7 +1,10 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Card, CardContent } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 import { formatHours } from '@/lib/jira/format-utils'
-import { AuthorTaskCollapsible } from '@/components/projects/overview/AuthorTaskCollapsible'
 import type { OverviewAuthorSummary } from '@/lib/jira/overview-types'
 
 interface AuthorSummaryViewProps {
@@ -10,81 +13,133 @@ interface AuthorSummaryViewProps {
   totalProjectSeconds: number
 }
 
+interface AuthorSectionProps {
+  author: OverviewAuthorSummary
+  instanceUrl: string
+  sharePercent: number
+}
+
+function AuthorSection({
+  author,
+  instanceUrl,
+  sharePercent,
+}: AuthorSectionProps): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div>
+      {/* Author header row */}
+      <div className="flex items-center justify-between h-12 px-4 bg-gray-50 border-b border-border">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-6 w-6 shrink-0">
+            <AvatarFallback className="text-xs font-medium bg-blue-50 text-blue-600">
+              {author.displayName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-sm font-medium">{author.displayName}</span>
+          <span className="text-xs text-muted-foreground">
+            {author.taskCount} task{author.taskCount !== 1 ? 's' : ''} ·{' '}
+            {formatHours(author.totalSeconds)}
+          </span>
+        </div>
+        <div className="flex items-center gap-4 shrink-0">
+          <span className="text-sm font-semibold tabular-nums">
+            {author.totalHours.toFixed(2)}h
+          </span>
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? 'Hide tasks' : `Show ${author.tasks.length} task${author.tasks.length !== 1 ? 's' : ''}`}
+          </button>
+        </div>
+      </div>
+
+      {/* Share bar — 3px, full width, dynamic percentage allowed via inline style */}
+      <div className="h-[3px] bg-muted">
+        <div
+          className="h-[3px] bg-blue-400"
+          style={{ width: sharePercent + '%' }}
+        />
+      </div>
+
+      {/* Task rows — indented, same dense style */}
+      {open && (
+        <div className="divide-y divide-border">
+          {author.tasks.map((task) => (
+            <div
+              key={task.issueKey}
+              className="flex items-center justify-between h-10 pl-12 pr-4 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                {task.issueKey ? (
+                  <Link
+                    href={`${instanceUrl}/browse/${task.issueKey}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors w-20 shrink-0"
+                  >
+                    {task.issueKey}
+                  </Link>
+                ) : (
+                  <span className="w-20 shrink-0 text-xs text-muted-foreground">—</span>
+                )}
+                <p className="text-xs text-muted-foreground truncate">{task.issueSummary}</p>
+              </div>
+              <div className="shrink-0 ml-4 text-right">
+                <span className="text-xs font-semibold tabular-nums">
+                  {task.hours.toFixed(2)}h
+                </span>
+                <p className="text-[10px] text-muted-foreground">
+                  {task.worklogCount} worklog{task.worklogCount !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function AuthorSummaryView({
   authors,
   instanceUrl,
   totalProjectSeconds,
 }: AuthorSummaryViewProps): React.JSX.Element {
+  if (authors.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground text-center py-10">
+        No time logged in this period.
+      </p>
+    )
+  }
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <div>
-          <p className="text-sm font-medium">
-            {authors.length} worklog author{authors.length !== 1 ? 's' : ''}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            People who logged time in Jira during this period.
-          </p>
-        </div>
+      <div className="flex justify-end mb-1">
+        <span className="text-[11px] text-muted-foreground">
+          {authors.length} worklog author{authors.length !== 1 ? 's' : ''}
+        </span>
       </div>
+      <div className={cn('border border-border rounded-md overflow-hidden divide-y divide-border')}>
+        {authors.map((author) => {
+          const sharePercent =
+            totalProjectSeconds > 0
+              ? Math.round((author.totalSeconds / totalProjectSeconds) * 100)
+              : 0
 
-      {authors.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8">
-          No time logged in this period.
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {authors.map((author) => {
-            const sharePct =
-              totalProjectSeconds > 0
-                ? Math.round((author.totalSeconds / totalProjectSeconds) * 100)
-                : 0
-
-            return (
-              <Card key={author.accountId}>
-                <CardContent className="pt-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="text-sm font-medium">
-                          {author.displayName.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-semibold">{author.displayName}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {author.taskCount} task{author.taskCount !== 1 ? 's' : ''} ·{' '}
-                          {formatHours(author.totalSeconds)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-2xl font-bold tabular-nums">
-                        {author.totalHours.toFixed(2)}h
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Share bar — dynamic percentage requires inline style */}
-                  <div className="mt-3 flex items-center gap-2">
-                    <div className="flex-1 bg-muted rounded-full h-2">
-                      <div
-                        className="bg-primary rounded-full h-2"
-                        style={{ width: sharePct + '%' }}
-                      />
-                    </div>
-                    <span className="text-xs text-muted-foreground tabular-nums w-10 text-right">
-                      {sharePct}%
-                    </span>
-                  </div>
-
-                  <AuthorTaskCollapsible tasks={author.tasks} instanceUrl={instanceUrl} />
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+          return (
+            <AuthorSection
+              key={author.accountId}
+              author={author}
+              instanceUrl={instanceUrl}
+              sharePercent={sharePercent}
+            />
+          )
+        })}
+      </div>
     </div>
   )
 }

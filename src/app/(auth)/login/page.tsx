@@ -26,11 +26,11 @@ export default async function LoginPage({
         <Card>
           <CardHeader className="text-center space-y-3">
             <div className="flex justify-center">
-              <div className="rounded-xl bg-primary w-12 h-12 flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-xl">B</span>
-              </div>
+              <span className="text-2xl font-bold tracking-[-0.02em]">
+                <span className="text-blue-600">Bill</span><span className="text-blue-400">Sync</span>
+              </span>
             </div>
-            <CardTitle className="text-2xl">BillSync</CardTitle>
+            <CardTitle className="text-lg font-medium text-muted-foreground">Welcome back</CardTitle>
             <CardDescription>
               Sign in to manage your client billing
             </CardDescription>

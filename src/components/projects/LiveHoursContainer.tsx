@@ -41,9 +41,9 @@ export default function LiveHoursContainer({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h3 className="text-sm font-medium">Overview</h3>
+    <div>
+      {/* Period filter — right-aligned, compact, sits above stat row */}
+      <div className="flex justify-end mb-3">
         <DatePeriodFilter value={filter} onChange={handleFilterChange} />
       </div>
 

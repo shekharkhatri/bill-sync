@@ -8,6 +8,7 @@ export interface BillingShareToken {
   createdAt: Date
   expiresAt: Date | null
   isActive: boolean
+  csvEnabled: boolean
 }
 
 export interface SharedBillingView {
@@ -27,13 +28,12 @@ export interface SharedBillingView {
   tasks: SharedTaskRow[]
   generatedAt: Date
   tokenId: string
+  csvEnabled: boolean
 }
 
 export interface SharedTaskRow {
   displaySummary: string
   displayIssueKey: string | null
-  originalHours: number
   effectiveHours: number
-  internalNote: string | null
   isManual: boolean
 }

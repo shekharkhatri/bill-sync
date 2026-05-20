@@ -1,17 +1,14 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { CalendarRange, Info, Minus, TrendingDown } from 'lucide-react'
+import { ChevronRight, Info } from 'lucide-react'
 import { getUserContext, hasPermission } from '@/lib/auth/permissions'
 import { getProjectById } from '@/lib/projects/queries'
 import { getBillingWithStats, getBillingTaskSummaries } from '@/lib/billings/queries'
 import { getJiraConfigForDisplay } from '@/lib/jira/queries'
 import { getShareToken } from '@/lib/share/queries'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { ChevronRight } from 'lucide-react'
 import { formatDateFull } from '@/lib/jira/format-utils'
-import { BILLING_STATUS_LABELS, BILLING_STATUS_VARIANTS } from '@/lib/billings/types'
+import { BILLING_STATUS_LABELS } from '@/lib/billings/types'
 import BillingActions from '@/components/billings/BillingActions'
 import DeleteBillingButton from '@/components/billings/DeleteBillingButton'
 import ExportButton from '@/components/billings/ExportButton'
@@ -23,6 +20,18 @@ import { PermissionGuard } from '@/components/shared/PermissionGuard'
 
 interface BillingDetailPageProps {
   params: Promise<{ id: string; billingId: string }>
+}
+
+function statusPillClass(status: string): string {
+  switch (status) {
+    case 'finalized':
+      return 'bg-success-50 text-success-600 border border-success-200'
+    case 'reviewed':
+      return 'bg-blue-50 text-blue-600 border border-blue-200'
+    case 'draft':
+    default:
+      return 'bg-gray-100 text-gray-600 border border-gray-200'
+  }
 }
 
 export default async function BillingDetailPage({
@@ -52,44 +61,45 @@ export default async function BillingDetailPage({
 
   const delta = billing.totalModifiedHours - billing.totalOriginalHours
   const deltaStr = (delta >= 0 ? '+' : '') + delta.toFixed(1) + 'h'
+  const hasAdjustment = billing.totalModifiedHours !== billing.totalOriginalHours
 
   return (
     <div className="pb-20 md:pb-24">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+      <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground mb-2">
         <Link href="/dashboard" className="hover:text-foreground transition-colors">
           Dashboard
         </Link>
-        <ChevronRight className="h-4 w-4" />
+        <ChevronRight className="h-3.5 w-3.5" />
         <Link href={`/projects/${id}`} className="hover:text-foreground transition-colors">
           {project.name}
         </Link>
-        <ChevronRight className="h-4 w-4" />
+        <ChevronRight className="h-3.5 w-3.5" />
         <Link href={`/projects/${id}`} className="hover:text-foreground transition-colors">
           Billings
         </Link>
-        <ChevronRight className="h-4 w-4" />
+        <ChevronRight className="h-3.5 w-3.5" />
         <span>{billing.label}</span>
       </div>
 
-      {/* Top section */}
-      <div className="flex items-start justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{billing.label}</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <CalendarRange className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
-                {formatDateFull(billing.startDate)} — {formatDateFull(billing.endDate)}
-              </span>
-            </div>
+      {/* Page header row */}
+      <div className="flex items-start justify-between gap-4 mb-5">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-semibold tracking-tight">{billing.label}</h1>
+            <span
+              className={`text-[11px] font-medium px-2 py-0.5 rounded-sm ${statusPillClass(billing.status)}`}
+            >
+              {BILLING_STATUS_LABELS[billing.status]}
+            </span>
           </div>
-          <Badge variant={BILLING_STATUS_VARIANTS[billing.status]}>
-            {BILLING_STATUS_LABELS[billing.status]}
-          </Badge>
+          <p className="text-[13px] text-muted-foreground mt-0.5">
+            {formatDateFull(billing.startDate)} — {formatDateFull(billing.endDate)}
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Action buttons — right-aligned */}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           {billing.status === 'draft' && (
             <PermissionGuard permission="billing:create">
               <DeleteBillingButton
@@ -100,69 +110,62 @@ export default async function BillingDetailPage({
               />
             </PermissionGuard>
           )}
-          <ExportButton
-            billingId={billing.id}
-            billingStatus={billing.status}
-          />
+          <ExportButton billingId={billing.id} billingStatus={billing.status} />
           <BillingActions billing={billing} canFinalize={canFinalize} />
         </div>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground">Total Logged</p>
-            <p className="text-2xl font-bold mt-1">
-              {billing.totalOriginalHours.toFixed(1)}h
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground">Total Billed</p>
-            <p
-              className={`text-2xl font-bold mt-1 ${
-                billing.totalModifiedHours !== billing.totalOriginalHours ? 'text-amber-600' : ''
-              }`}
-            >
-              {billing.totalModifiedHours.toFixed(1)}h
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground">Adjustment</p>
-            <div className="flex items-center gap-1 mt-1">
-              {delta < 0 ? (
-                <TrendingDown className="h-4 w-4 text-red-600" />
-              ) : (
-                <Minus className="h-4 w-4 text-muted-foreground" />
-              )}
-              <p
-                className={`text-2xl font-bold ${
-                  delta < 0 ? 'text-red-600' : 'text-muted-foreground'
-                }`}
-              >
-                {deltaStr}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground">Line Items</p>
-            <p className="text-2xl font-bold mt-1">{billing.worklogCount}</p>
-          </CardContent>
-        </Card>
+      {/* Inline stat row — 48px, divided, no card borders */}
+      <div className="flex items-stretch h-12 border border-border rounded-md mb-4 divide-x divide-border overflow-hidden">
+        <div className="flex flex-col justify-center px-5 min-w-0">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium leading-none mb-1">
+            Total Logged
+          </span>
+          <span className="text-base font-semibold tabular-nums leading-none">
+            {billing.totalOriginalHours.toFixed(1)}h
+          </span>
+        </div>
+        <div className="flex flex-col justify-center px-5 min-w-0">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium leading-none mb-1">
+            Total Billed
+          </span>
+          <span
+            className={`text-base font-semibold tabular-nums leading-none ${
+              hasAdjustment ? 'text-blue-600' : ''
+            }`}
+          >
+            {billing.totalModifiedHours.toFixed(1)}h
+          </span>
+        </div>
+        <div className="flex flex-col justify-center px-5 min-w-0">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium leading-none mb-1">
+            Adjustment
+          </span>
+          <span
+            className={`text-base font-semibold tabular-nums leading-none ${
+              delta < 0
+                ? 'text-destructive'
+                : delta > 0
+                  ? 'text-success-600'
+                  : 'text-muted-foreground'
+            }`}
+          >
+            {deltaStr}
+          </span>
+        </div>
+        <div className="flex flex-col justify-center px-5 min-w-0">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium leading-none mb-1">
+            Line Items
+          </span>
+          <span className="text-base font-semibold tabular-nums leading-none">
+            {billing.worklogCount}
+          </span>
+        </div>
       </div>
 
-      {/* Share link manager */}
+      {/* Shareable link row */}
       <PermissionGuard permission="billing:finalize">
-        <div className="mt-6">
+        <div className="mb-5">
           <ShareLinkManager
             billingId={billing.id}
             billingStatus={billing.status}
@@ -171,13 +174,14 @@ export default async function BillingDetailPage({
         </div>
       </PermissionGuard>
 
-      {/* Worklogs section */}
-      <div className="mt-8">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h2 className="text-lg font-semibold inline">Line Items</h2>
-            <span className="text-sm text-muted-foreground ml-2">
-              ({tasks.length} {tasks.length === 1 ? 'line item' : 'line items'})
+      {/* Line items section */}
+      <div>
+        {/* Section header */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold">Line Items</h2>
+            <span className="text-[13px] text-muted-foreground">
+              {tasks.length} {tasks.length === 1 ? 'item' : 'items'}
             </span>
           </div>
           {billing.status === 'draft' && (
@@ -189,7 +193,7 @@ export default async function BillingDetailPage({
         </div>
 
         {billing.status !== 'draft' && (
-          <Alert className="mb-4">
+          <Alert className="mb-3">
             <Info className="h-4 w-4" />
             <AlertDescription>
               {billing.status === 'reviewed'

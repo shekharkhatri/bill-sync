@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { Trash2, Wrench } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -45,36 +44,36 @@ export default function BillingTaskEditorRow({
       ? task.effectiveSeconds
       : null
 
+  // Highlight billed in blue when it differs from original (in read-only view)
+  const showsModifiedBilled = !isEditable && dbIsModified
+
   return (
-    <TableRow>
-      {/* Issue */}
-      <TableCell className="w-36 align-top">
+    <TableRow className="h-10">
+      {/* Issue — monospace, muted, fixed 88px */}
+      <TableCell className="w-[88px] align-middle px-3 py-0">
         {task.isManual ? (
-          <Badge variant="secondary" className="text-xs">
-            <Wrench className="h-3 w-3 mr-1" />
-            Manual
-          </Badge>
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <Wrench className="h-3 w-3 shrink-0" />
+            <span className="font-mono text-xs">manual</span>
+          </div>
         ) : task.displayIssueKey ? (
           <Link
             href={`${instanceUrl}/browse/${task.displayIssueKey}`}
             target="_blank"
             rel="noopener"
+            className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Badge variant="outline" className="font-mono text-xs hover:bg-accent cursor-pointer">
-              {task.displayIssueKey}
-            </Badge>
+            {task.displayIssueKey}
           </Link>
         ) : (
-          <Badge variant="outline" className="text-xs text-muted-foreground">
-            Jira ref hidden
-          </Badge>
+          <span className="font-mono text-xs text-muted-foreground">—</span>
         )}
       </TableCell>
 
       {/* Summary */}
-      <TableCell className="align-top">
+      <TableCell className="align-middle px-3 py-0">
         <Tooltip>
-          <TooltipTrigger render={<p className="text-sm truncate cursor-default" />}>
+          <TooltipTrigger render={<p className="text-sm truncate cursor-default max-w-0" />}>
             {task.displaySummary}
           </TooltipTrigger>
           <TooltipContent className="max-w-sm whitespace-normal">
@@ -95,15 +94,15 @@ export default function BillingTaskEditorRow({
         )}
       </TableCell>
 
-      {/* Original hours */}
-      <TableCell className="w-36 text-right align-top">
-        <span className="text-sm text-muted-foreground">
+      {/* Original hours — right-aligned, muted, 80px */}
+      <TableCell className="w-[80px] text-right align-middle px-3 py-0">
+        <span className="text-sm tabular-nums text-muted-foreground">
           {(task.totalOriginalSeconds / 3600).toFixed(2)}h
         </span>
       </TableCell>
 
-      {/* Billed hours — editable */}
-      <TableCell className="w-44 align-top">
+      {/* Billed hours — right-aligned when read-only, blue when modified */}
+      <TableCell className="w-[120px] align-middle px-3 py-0">
         {isEditable ? (
           <HoursInput
             value={hoursInputValue}
@@ -113,17 +112,21 @@ export default function BillingTaskEditorRow({
             max={9999}
           />
         ) : (
-          <span className="text-sm font-medium">
+          <span
+            className={`text-sm font-medium tabular-nums ${
+              showsModifiedBilled ? 'text-blue-600' : ''
+            }`}
+          >
             {(task.effectiveSeconds / 3600).toFixed(2)}h
           </span>
         )}
       </TableCell>
 
       {/* Dirty dot */}
-      <TableCell className="w-6 align-top">
+      <TableCell className="w-6 align-middle px-1 py-0">
         {isDirty ? (
           <Tooltip>
-            <TooltipTrigger render={<div className="h-2 w-2 rounded-full bg-amber-500 mt-1.5 mx-auto" />} />
+            <TooltipTrigger render={<div className="h-2 w-2 rounded-full bg-warning-600 mx-auto" />} />
             <TooltipContent>Unsaved change</TooltipContent>
           </Tooltip>
         ) : (
@@ -131,8 +134,8 @@ export default function BillingTaskEditorRow({
         )}
       </TableCell>
 
-      {/* Actions */}
-      <TableCell className="w-12 align-top">
+      {/* Delete */}
+      <TableCell className="w-12 align-middle px-2 py-0">
         {isEditable && (
           <Tooltip>
             <TooltipTrigger

@@ -3,7 +3,7 @@
 import { db } from '@/lib/db/client'
 import { generateShareToken, isTokenExpired } from '@/lib/share/token'
 import { getBillingWithStats } from '@/lib/billings/queries'
-import { getBillingTaskSummaries, getTaskNotes } from '@/lib/billings/queries'
+import { getBillingTaskSummaries } from '@/lib/billings/queries'
 import { getProjectById } from '@/lib/projects/queries'
 import type { BillingShareToken, SharedBillingView, SharedTaskRow } from '@/lib/share/types'
 
@@ -15,6 +15,7 @@ function mapToken(row: {
   created_at: Date
   expires_at: Date | null
   is_active: boolean
+  csv_enabled: boolean
 }): BillingShareToken {
   return {
     id: row.id,
@@ -24,6 +25,7 @@ function mapToken(row: {
     createdAt: row.created_at,
     expiresAt: row.expires_at,
     isActive: row.is_active,
+    csvEnabled: row.csv_enabled,
   }
 }
 
@@ -59,6 +61,7 @@ export async function getShareTokenByValue(token: string): Promise<BillingShareT
 export async function createShareToken(
   billingId: string,
   userId: string,
+  csvEnabled: boolean,
   expiresAt?: Date,
 ): Promise<BillingShareToken> {
   const tokenValue = generateShareToken()
@@ -80,6 +83,7 @@ export async function createShareToken(
       created_by: userId,
       expires_at: expiresAt ?? null,
       is_active: true,
+      csv_enabled: csvEnabled,
     })
     .returningAll()
     .executeTakeFirstOrThrow()
@@ -106,8 +110,24 @@ export async function revokeShareToken(billingId: string): Promise<void> {
 }
 
 /**
+ * Updates the csv_enabled flag on the active share token for a billing.
+ */
+export async function updateShareTokenCsv(
+  billingId: string,
+  csvEnabled: boolean,
+): Promise<void> {
+  await db
+    .updateTable('billing_share_tokens')
+    .set({ csv_enabled: csvEnabled })
+    .where('billing_id', '=', billingId)
+    .where('is_active', '=', true)
+    .execute()
+}
+
+/**
  * Validates a share token and returns the billing view data.
  * Returns null for invalid, revoked, expired tokens, or draft billings.
+ * internalNote is intentionally excluded — internal data must not leak to external users.
  */
 export async function getSharedBillingView(token: string): Promise<SharedBillingView | null> {
   try {
@@ -122,17 +142,12 @@ export async function getSharedBillingView(token: string): Promise<SharedBilling
     const project = await getProjectById(billing.projectId)
     if (!project) return null
 
-    const [taskList, notes] = await Promise.all([
-      getBillingTaskSummaries(tokenRow.billingId),
-      getTaskNotes(tokenRow.billingId),
-    ])
+    const taskList = await getBillingTaskSummaries(tokenRow.billingId)
 
     const tasks: SharedTaskRow[] = taskList.map((task) => ({
       displaySummary: task.displaySummary,
       displayIssueKey: task.displayIssueKey,
-      originalHours: task.totalOriginalSeconds / 3600,
       effectiveHours: task.effectiveSeconds / 3600,
-      internalNote: notes[task.jiraIssueKey] ?? null,
       isManual: task.isManual,
     }))
 
@@ -153,6 +168,7 @@ export async function getSharedBillingView(token: string): Promise<SharedBilling
       tasks,
       generatedAt: new Date(),
       tokenId: tokenRow.id,
+      csvEnabled: tokenRow.csvEnabled,
     }
   } catch (err) {
     console.error('[getSharedBillingView] Failed:', err)

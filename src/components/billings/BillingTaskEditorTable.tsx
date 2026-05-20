@@ -226,17 +226,15 @@ export default function BillingTaskEditorTable({
       )}
 
       {tasks.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="py-12 text-center">
-            <Inbox className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">No tasks found for this billing period.</p>
-            {isEditable && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Pull worklogs from Jira or add a manual task above.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <div className="border border-dashed border-border rounded-md py-12 text-center">
+          <Inbox className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">No tasks found for this billing period.</p>
+          {isEditable && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Pull worklogs from Jira or add a manual task above.
+            </p>
+          )}
+        </div>
       ) : (
         <>
           {/* Mobile card list */}
@@ -330,15 +328,23 @@ export default function BillingTaskEditorTable({
             </div>
           </div>
 
-          {/* Desktop table */}
-          <div className="hidden md:block rounded-md border overflow-hidden">
+          {/* Desktop table — sticky header, dense rows */}
+          <div className="hidden md:block border border-border rounded-md overflow-hidden">
             <Table className="table-fixed w-full">
               <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="w-36">Issue</TableHead>
-                  <TableHead>Summary</TableHead>
-                  <TableHead className="w-36 text-right">Original</TableHead>
-                  <TableHead className="w-44">Billed</TableHead>
+                <TableRow className="bg-card border-b border-border sticky top-[52px] z-10">
+                  <TableHead className="w-[88px] text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-3 py-2">
+                    Issue
+                  </TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-3 py-2">
+                    Summary
+                  </TableHead>
+                  <TableHead className="w-[80px] text-right text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-3 py-2">
+                    Original
+                  </TableHead>
+                  <TableHead className="w-[120px] text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-3 py-2">
+                    Billed
+                  </TableHead>
                   <TableHead className="w-6" />
                   <TableHead className="w-12" />
                 </TableRow>
@@ -362,9 +368,11 @@ export default function BillingTaskEditorTable({
               </TableBody>
 
               <TableFooter>
-                <TableRow className="bg-muted/50 font-medium">
-                  <TableCell colSpan={3} className="text-right text-sm">Total</TableCell>
-                  <TableCell className="text-sm pl-3">
+                <TableRow className="bg-gray-50 border-t border-border font-medium">
+                  <TableCell colSpan={3} className="text-right text-[13px] text-muted-foreground px-3 py-2">
+                    Total
+                  </TableCell>
+                  <TableCell className="text-[13px] font-semibold tabular-nums px-3 py-2">
                     {totalEffectiveHours.toFixed(2)}h
                   </TableCell>
                   <TableCell />

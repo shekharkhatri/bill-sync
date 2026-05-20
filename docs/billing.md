@@ -102,11 +102,31 @@ Trigger: `ExportButton` CC → `fetch()` → blob → programmatic `<a>` downloa
 ## Shareable Links
 Table: `billing_share_tokens` (one active token per billing at a time)
 Available: reviewed or finalized billings only (draft blocked in action)
-Permission: `billing:finalize` required to generate or revoke
+Permission: `billing:finalize` required to generate, revoke, or toggle CSV
 Token: 43-char URL-safe base64, ~256-bit entropy, generated server-side via `node:crypto`
 URL format: `{APP_URL}/share/{token}`
 Revoke: `revokeShareToken()` sets `is_active = false` — link stops working immediately
-Public page: `src/app/share/[token]/page.tsx` — no auth, noindex robots meta
-Public export: `GET /api/share/[token]/export` — CSV, logs `format='csv-shared'`
+Public page: `src/app/share/[token]/page.tsx` — **Worklog Preview** — no auth, noindex robots meta
+Public export: `GET /api/share/[token]/export` — CSV, logs `format='csv-shared'`, gated by `csv_enabled`
 Manager UI: `ShareLinkManager` CC on billing detail page (permission-gated via PermissionGuard)
 One active link per billing — generating a new link revokes the previous one
+
+### CSV Export Toggle (`csv_enabled`)
+`csv_enabled` (bool, default true) on `billing_share_tokens` controls whether the recipient can download CSV.
+- Toggle in `ShareLinkManager` — pre-generation option + live toggle on active link
+- `updateShareTokenCsvAction(billingId, csvEnabled)` — requires `billing:finalize`
+- Export route returns 403 if `csv_enabled = false` — message: "CSV export is not enabled for this shared link."
+- Export button on public page conditionally rendered: `{view.csvEnabled && <SharedExportButton />}`
+
+### External View Data Policy
+The public Worklog Preview intentionally hides internal data:
+| Shown externally        | Hidden from external view           |
+|-------------------------|-------------------------------------|
+| Project name            | Billing status                      |
+| Client name             | Original (pre-edit) hours           |
+| Billing label           | Internal notes / modified_comment   |
+| Billing date range      | Worklog author names                |
+| Total billed hours      | Worklog count                       |
+| Task list (summary + Jira key + hours) | Any Jira credentials |
+
+External CSV columns: Task, Jira Issue, Hours (no original hours, no internal notes, no status)

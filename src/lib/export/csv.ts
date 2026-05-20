@@ -21,7 +21,7 @@
 // SERVER ONLY — never import from Client Components
 
 import { formatDateFull } from '@/lib/jira/format-utils'
-import type { BillingWithStats, BillingTaskSummary, BillingStatus } from '@/lib/billings/types'
+import type { BillingWithStats, BillingTaskSummary } from '@/lib/billings/types'
 import type { Project } from '@/lib/projects/types'
 import type { SharedTaskRow } from '@/lib/share/types'
 
@@ -153,35 +153,29 @@ export function buildBillingCSV(
 }
 
 /**
- * Builds a CSV for a shared billing view. Accepts the simpler SharedTaskRow types
- * directly, avoiding type casting in public export route handlers.
+ * Builds a simplified CSV for the public shared worklog view.
+ * Intentionally excludes: status, original hours, internal notes, difference.
+ * These are internal fields and must not appear in the external-facing export.
+ *
+ * Columns: Task, Jira Issue, Hours
  */
 export function buildSharedBillingCSV(
   projectName: string,
   clientName: string,
-  billing: {
-    label: string
-    startDate: Date
-    endDate: Date
-    status: BillingStatus
-    totalOriginalHours: number
-    totalModifiedHours: number
-  },
+  label: string,
+  dateRange: string,
+  totalHours: number,
   tasks: SharedTaskRow[],
 ): string {
   const CRLF = '\r\n'
   const rows: string[] = []
 
   // ── Section 1: Header block ───────────────────────────────────────────────
-  const statusLabel = billing.status.charAt(0).toUpperCase() + billing.status.slice(1)
-  const dateRange = `${formatDateFull(billing.startDate)} – ${formatDateFull(billing.endDate)}`
-
   rows.push(
     [
       escapeCSV('Project'),
       escapeCSV('Client'),
       escapeCSV('Billing Period'),
-      escapeCSV('Status'),
       escapeCSV('Exported At'),
     ].join(','),
   )
@@ -190,7 +184,6 @@ export function buildSharedBillingCSV(
       escapeCSV(projectName),
       escapeCSV(clientName),
       escapeCSV(dateRange),
-      escapeCSV(statusLabel),
       escapeCSV(new Date().toISOString()),
     ].join(','),
   )
@@ -205,7 +198,7 @@ export function buildSharedBillingCSV(
   )
   rows.push(
     [
-      escapeCSV(billing.totalModifiedHours.toFixed(2)),
+      escapeCSV(totalHours.toFixed(2)),
       escapeCSV(tasks.length),
     ].join(','),
   )
@@ -215,8 +208,8 @@ export function buildSharedBillingCSV(
   rows.push(
     [
       escapeCSV('Task'),
+      escapeCSV('Jira Issue'),
       escapeCSV('Hours'),
-      escapeCSV('Internal Note'),
     ].join(','),
   )
 
@@ -226,8 +219,8 @@ export function buildSharedBillingCSV(
     rows.push(
       [
         escapeCSV(task.displaySummary),
+        escapeCSV(task.displayIssueKey ?? ''),
         escapeCSV(task.effectiveHours.toFixed(2)),
-        escapeCSV(task.internalNote),
       ].join(','),
     )
 
@@ -238,8 +231,8 @@ export function buildSharedBillingCSV(
   rows.push(
     [
       escapeCSV('TOTAL'),
-      escapeCSV(totalEffective.toFixed(2)),
       escapeCSV(''),
+      escapeCSV(totalEffective.toFixed(2)),
     ].join(','),
   )
 

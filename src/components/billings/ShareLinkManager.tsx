@@ -2,13 +2,17 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCheck, Copy, Globe, Link2, LinkIcon } from 'lucide-react'
+import { CheckCheck, Copy, FileDown, Globe, Link2, LinkIcon, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import { Switch } from '@/components/ui/switch'
 import { formatDateFull } from '@/lib/jira/format-utils'
-import { generateShareLinkAction, revokeShareLinkAction } from '@/lib/share/actions'
+import {
+  generateShareLinkAction,
+  revokeShareLinkAction,
+  updateShareTokenCsvAction,
+} from '@/lib/share/actions'
 import type { BillingShareToken } from '@/lib/share/types'
 import type { BillingStatus } from '@/lib/billings/types'
 
@@ -25,14 +29,16 @@ export default function ShareLinkManager({
 }: ShareLinkManagerProps): React.JSX.Element {
   const router = useRouter()
   const [token, setToken] = useState<BillingShareToken | null>(existingToken)
+  const [csvEnabled, setCsvEnabled] = useState<boolean>(existingToken?.csvEnabled ?? true)
   const [isGenerating, startGenerating] = useTransition()
   const [isRevoking, startRevoking] = useTransition()
+  const [isUpdatingCsv, startUpdatingCsv] = useTransition()
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Sync when server re-renders with updated existingToken after router.refresh()
   useEffect(() => {
     setToken(existingToken)
+    setCsvEnabled(existingToken?.csvEnabled ?? true)
   }, [existingToken])
 
   const shareUrl =
@@ -52,7 +58,7 @@ export default function ShareLinkManager({
   function handleGenerate(): void {
     setError(null)
     startGenerating(async () => {
-      const result = await generateShareLinkAction(billingId)
+      const result = await generateShareLinkAction(billingId, csvEnabled)
       if (result.success) {
         router.refresh()
       } else {
@@ -73,104 +79,164 @@ export default function ShareLinkManager({
     })
   }
 
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Link2 className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium">Shareable Link</CardTitle>
-          </div>
-          {token ? (
-            <Badge variant="secondary" className="text-xs gap-1">
-              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Active
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-xs">
-              No active link
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
+  function handleCsvToggle(enabled: boolean): void {
+    setCsvEnabled(enabled)
+    startUpdatingCsv(async () => {
+      const result = await updateShareTokenCsvAction(billingId, enabled)
+      if (!result.success) {
+        // Revert optimistic update on failure
+        setCsvEnabled(!enabled)
+        setError(result.error)
+      }
+    })
+  }
 
-      <CardContent className="space-y-3">
+  return (
+    <div>
+      {/* Compact share row */}
+      <div className="px-4 py-2.5 bg-gray-50 border border-border rounded-md">
         {isDisabled ? (
-          <p className="text-sm text-muted-foreground">
-            Shareable links are available once the billing is reviewed or finalized.
-          </p>
+          <div className="flex items-center gap-3">
+            <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              Shareable links are available once the billing is reviewed or finalized.
+            </p>
+          </div>
         ) : token ? (
           <>
-            {/* URL display row */}
-            <div className="flex items-center gap-2">
-              <div className="flex-1 flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 overflow-hidden">
-                <Globe className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <p className="text-xs text-muted-foreground truncate font-mono">{shareUrl}</p>
+            {/* URL row */}
+            <div className="flex items-center gap-3">
+              <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <Globe className="h-3 w-3 text-muted-foreground shrink-0" />
+                <p className="font-mono text-xs text-muted-foreground truncate">{shareUrl}</p>
               </div>
+
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-sm bg-success-50 text-success-600 border border-success-200 shrink-0">
+                Active
+              </span>
+
+              <span className="text-[11px] text-muted-foreground shrink-0 hidden sm:block">
+                {formatDateFull(token.createdAt)}
+              </span>
+
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="shrink-0 gap-1.5"
+                className="h-7 text-xs gap-1 shrink-0"
                 onClick={handleCopy}
               >
                 {copied ? (
                   <>
-                    <CheckCheck className="h-3.5 w-3.5 text-emerald-600" />
-                    <span className="text-emerald-600">Copied</span>
+                    <CheckCheck className="h-3 w-3 text-success-600" />
+                    <span className="text-success-600">Copied</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="h-3.5 w-3.5" />
+                    <Copy className="h-3 w-3" />
                     Copy
                   </>
                 )}
               </Button>
-            </div>
 
-            {/* Info row */}
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                Created {formatDateFull(token.createdAt)}
-                {token.expiresAt
-                  ? ` · Expires ${formatDateFull(token.expiresAt)}`
-                  : ' · No expiry'}
-              </p>
+              <span className="text-border shrink-0">·</span>
+
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleRevoke}
                 disabled={isRevoking}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 h-7 text-xs"
+                className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 gap-1 shrink-0"
               >
-                <LinkIcon className="h-3.5 w-3.5" />
-                {isRevoking ? 'Disabling...' : 'Disable link'}
+                {isRevoking ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <LinkIcon className="h-3 w-3" />
+                )}
+                {isRevoking ? 'Disabling…' : 'Disable'}
               </Button>
+            </div>
+
+            {/* CSV toggle */}
+            <Separator className="my-2.5" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileDown className="h-3.5 w-3.5 text-muted-foreground" />
+                <div>
+                  <p className="text-[13px] font-medium leading-none">CSV Export</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {csvEnabled
+                      ? 'External users can download a CSV of this worklog.'
+                      : 'CSV export is disabled for this shared link.'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {isUpdatingCsv && (
+                  <span className="text-xs text-muted-foreground animate-pulse">Updating…</span>
+                )}
+                <Switch
+                  checked={csvEnabled}
+                  onCheckedChange={handleCsvToggle}
+                  disabled={isUpdatingCsv}
+                  aria-label="Toggle CSV export for shared link"
+                />
+              </div>
             </div>
           </>
         ) : (
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              Generate a link to share this billing with your client.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="gap-1.5 shrink-0"
-            >
-              <Link2 className="h-3.5 w-3.5" />
-              {isGenerating ? 'Generating...' : 'Generate Link'}
-            </Button>
-          </div>
-        )}
+          <>
+            {/* Pre-generation CSV toggle */}
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-2">
+                <FileDown className="h-3.5 w-3.5 text-muted-foreground" />
+                <div>
+                  <p className="text-[13px] font-medium leading-none">Allow CSV Export</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Let external users download this worklog as CSV.
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={csvEnabled}
+                onCheckedChange={(v) => setCsvEnabled(v)}
+                aria-label="Allow CSV export on shared link"
+              />
+            </div>
 
-        {error && (
-          <Alert variant="destructive" className="text-xs py-2">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+            <Separator className="my-2.5" />
+
+            {/* Generate button row */}
+            <div className="flex items-center gap-3">
+              <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <p className="text-xs text-muted-foreground flex-1">
+                Generate a link to share this worklog with your client.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGenerate}
+                disabled={isGenerating}
+                className="h-7 text-xs gap-1.5 shrink-0"
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Link2 className="h-3 w-3" />
+                )}
+                {isGenerating ? 'Generating…' : 'Generate Link'}
+              </Button>
+            </div>
+          </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {error && (
+        <Alert variant="destructive" className="mt-2 text-xs py-2">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+    </div>
   )
 }

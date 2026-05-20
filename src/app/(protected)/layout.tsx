@@ -24,13 +24,12 @@ export default async function ProtectedLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 w-full border-b bg-background">
-        <div className="container mx-auto px-6 flex h-14 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-primary w-7 h-7 flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">B</span>
-            </div>
-            <span className="font-semibold">BillSync</span>
+      <header className="sticky top-0 z-50 w-full border-b bg-card h-[52px]">
+        <div className="container mx-auto px-8 flex h-full items-center justify-between">
+          <div className="flex items-center">
+            <span className="text-base font-bold tracking-[-0.02em]">
+              <span className="text-blue-600">Bill</span><span className="text-blue-400">Sync</span>
+            </span>
           </div>
 
           <div className="flex items-center gap-4">
@@ -67,7 +66,7 @@ export default async function ProtectedLayout({
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8">{children}</main>
+      <main className="container mx-auto px-8 py-8">{children}</main>
     </div>
   )
 }

@@ -40,7 +40,8 @@ displayIssueKey  = jira_reference_removed ? null : jira_issue_key
 
 ## billing_share_tokens Key Columns
 `token` (URL-safe base64, 43 chars, 256-bit entropy), `is_active` (revoke by setting false),
-`expires_at` (null = no expiry), `billing_id` → billings ON DELETE CASCADE
+`expires_at` (null = no expiry), `billing_id` → billings ON DELETE CASCADE,
+`csv_enabled` (bool, default true) — gates CSV export on public Worklog Preview page
 
 ## project_jira_configs Key Columns
 `instance_url`, `jira_project_key`, `user_email`, `encrypted_api_token`,

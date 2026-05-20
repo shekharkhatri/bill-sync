@@ -5,10 +5,11 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Shadcn semantic → CSS var bridge */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -39,82 +40,146 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Radius — BillSync scale (restrained) */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --radius-2xl: 8px;
+  --radius-3xl: 8px;
+  --radius-4xl: 8px;
+
+  /* BillSync neutral scale — available as Tailwind bg-/text-/border- utilities */
+  --color-gray-25:  #FBFAF7;
+  --color-gray-50:  #F5F4F0;
+  --color-gray-100: #EBE9E2;
+  --color-gray-200: #DCDAD0;
+  --color-gray-300: #B9B6A9;
+  --color-gray-400: #8C8A7E;
+  --color-gray-500: #61605A;
+  --color-gray-600: #43423D;
+  --color-gray-700: #2A2A26;
+  --color-gray-800: #1A1A17;
+
+  /* BillSync blue scale */
+  --color-blue-50:  #E6F1FB;
+  --color-blue-200: #B8D6F2;
+  --color-blue-400: #378ADD;
+  --color-blue-600: #185FA5;
+  --color-blue-800: #0C447C;
+
+  /* BillSync semantic scales */
+  --color-success-50:  #ECF1ED;
+  --color-success-200: #B8CDBE;
+  --color-success-600: #4B7F5B;
+  --color-success-800: #2E5238;
+
+  --color-warning-50:  #F7F0E1;
+  --color-warning-200: #E6CD96;
+  --color-warning-600: #B07D2C;
+  --color-warning-800: #76521A;
+
+  --color-danger-50:  #F6E9E7;
+  --color-danger-200: #E5B7B1;
+  --color-danger-600: #B0473A;
+  --color-danger-800: #762D23;
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
+  /* ── BillSync raw tokens ──────────────────────────────────── */
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Neutral scale (warm-tinted, 9 stops) */
+  --gray-25:  #FBFAF7;
+  --gray-50:  #F5F4F0;
+  --gray-100: #EBE9E2;
+  --gray-200: #DCDAD0;
+  --gray-300: #B9B6A9;
+  --gray-400: #8C8A7E;
+  --gray-500: #61605A;
+  --gray-600: #43423D;
+  --gray-700: #2A2A26;
+  --gray-800: #1A1A17;
+
+  /* Blue (interactive + brand) */
+  --blue-50:  #E6F1FB;
+  --blue-200: #B8D6F2;
+  --blue-400: #378ADD;
+  --blue-600: #185FA5;
+  --blue-800: #0C447C;
+
+  /* Semantic — status communication only */
+  --success-50:  #ECF1ED;
+  --success-200: #B8CDBE;
+  --success-600: #4B7F5B;
+  --success-800: #2E5238;
+
+  --warning-50:  #F7F0E1;
+  --warning-200: #E6CD96;
+  --warning-600: #B07D2C;
+  --warning-800: #76521A;
+
+  --danger-50:  #F6E9E7;
+  --danger-200: #E5B7B1;
+  --danger-600: #B0473A;
+  --danger-800: #762D23;
+
+  /* Motion */
+  --motion-fast: 90ms;
+  --motion-base: 140ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
+
+  /* Shadow — rare, floating overlays only */
+  --shadow-popover: 0 1px 2px rgba(20, 18, 12, 0.04),
+                    0 8px 24px rgba(20, 18, 12, 0.08);
+
+  /* ── Shadcn semantic vars — remapped to BillSync ────────────── */
+  --background:          #F5F4F0;   /* surface-bg — warm page wash */
+  --foreground:          #1A1A17;   /* text-primary */
+
+  --card:                #FFFFFF;   /* surface-default — cards, panels */
+  --card-foreground:     #1A1A17;
+
+  --popover:             #FFFFFF;   /* surface-overlay — menus, tooltips */
+  --popover-foreground:  #1A1A17;
+
+  --primary:             #185FA5;   /* blue-600 — brand / default action */
+  --primary-foreground:  #FFFFFF;
+
+  --secondary:           #EBE9E2;   /* gray-100 */
+  --secondary-foreground: #1A1A17;
+
+  --muted:               #EBE9E2;   /* surface-sunken — inputs, table head */
+  --muted-foreground:    #8C8A7E;   /* text-tertiary */
+
+  --accent:              #F5F4F0;   /* gray-50 — hover tint */
+  --accent-foreground:   #1A1A17;
+
+  --destructive:         #B0473A;   /* danger-600 */
+
+  --border:              #DCDAD0;   /* gray-200 / border-default */
+  --input:               #B9B6A9;   /* gray-300 / border-strong */
+  --ring:                #185FA5;   /* blue-600 / focus ring */
+
+  --radius:              6px;
+
+  /* Charts — use BillSync palette */
+  --chart-1: #185FA5;
+  --chart-2: #378ADD;
+  --chart-3: #4B7F5B;
+  --chart-4: #B07D2C;
+  --chart-5: #B0473A;
+
+  /* Sidebar */
+  --sidebar:                    #FFFFFF;
+  --sidebar-foreground:         #1A1A17;
+  --sidebar-primary:            #185FA5;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent:             #F5F4F0;
+  --sidebar-accent-foreground:  #1A1A17;
+  --sidebar-border:             #DCDAD0;
+  --sidebar-ring:               #378ADD;
 }
 
 @layer base {
@@ -123,8 +188,16 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "cv11", "ss01";
   }
   html {
     @apply font-sans;
+  }
+  ::selection {
+    background: #B8D6F2;
+    color: #1A1A17;
   }
 }
