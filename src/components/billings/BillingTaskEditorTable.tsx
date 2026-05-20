@@ -328,11 +328,11 @@ export default function BillingTaskEditorTable({
             </div>
           </div>
 
-          {/* Desktop table — sticky header, dense rows */}
+          {/* Desktop table */}
           <div className="hidden md:block border border-border rounded-md overflow-hidden">
             <Table className="table-fixed w-full">
               <TableHeader>
-                <TableRow className="bg-card border-b border-border sticky top-[52px] z-10">
+                <TableRow className="bg-gray-50 border-b border-border">
                   <TableHead className="w-[88px] text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-3 py-2">
                     Issue
                   </TableHead>

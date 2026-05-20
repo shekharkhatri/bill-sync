@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { AlertCircle, Download, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { BillingStatus } from '@/lib/billings/types'
 
 interface ExportButtonProps {
@@ -19,6 +20,8 @@ export default function ExportButton({
 }: ExportButtonProps): React.JSX.Element {
   const [isExporting, setIsExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const isDisabled = isExporting || disabled || billingStatus === 'draft'
 
   async function handleExport(): Promise<void> {
     setIsExporting(true)
@@ -52,27 +55,34 @@ export default function ExportButton({
     }
   }
 
+  const button = (
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={isDisabled}
+      onClick={handleExport}
+      className="gap-2"
+    >
+      {isExporting ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <Download className="h-4 w-4" />
+      )}
+      {isExporting ? 'Exporting...' : 'Export CSV'}
+    </Button>
+  )
+
   return (
     <div className="flex flex-col items-end gap-2">
-      <Button
-        variant="default"
-        size="sm"
-        disabled={isExporting || disabled || billingStatus === 'draft'}
-        onClick={handleExport}
-        className="gap-2"
-      >
-        {isExporting ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Download className="h-4 w-4" />
-        )}
-        {isExporting ? 'Exporting...' : 'Export CSV'}
-      </Button>
-
-      {billingStatus === 'draft' && (
-        <p className="text-xs text-muted-foreground">
-          Mark as reviewed to enable export.
-        </p>
+      {billingStatus === 'draft' ? (
+        <Tooltip>
+          <TooltipTrigger render={<span className="inline-flex" />}>
+            {button}
+          </TooltipTrigger>
+          <TooltipContent>Mark as reviewed to enable export</TooltipContent>
+        </Tooltip>
+      ) : (
+        button
       )}
 
       {error && (

@@ -71,17 +71,17 @@ export default function BillingTaskEditorRow({
       </TableCell>
 
       {/* Summary */}
-      <TableCell className="align-middle px-3 py-0">
-        <Tooltip>
-          <TooltipTrigger render={<p className="text-sm truncate cursor-default max-w-0" />}>
-            {task.displaySummary}
-          </TooltipTrigger>
-          <TooltipContent className="max-w-sm whitespace-normal">
-            {task.displaySummary}
-          </TooltipContent>
-        </Tooltip>
-        {isEditable && (
-          <div className="mt-0.5">
+      <TableCell className="align-middle px-3 py-0 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <Tooltip>
+            <TooltipTrigger render={<p className="text-sm truncate cursor-default min-w-0 flex-1" />}>
+              {task.displaySummary}
+            </TooltipTrigger>
+            <TooltipContent className="max-w-sm whitespace-normal">
+              {task.displaySummary}
+            </TooltipContent>
+          </Tooltip>
+          {isEditable && (
             <EditTaskSummaryDialog
               billingId={billingId}
               issueKey={task.jiraIssueKey}
@@ -90,8 +90,8 @@ export default function BillingTaskEditorRow({
               jiraReferenceRemoved={task.jiraReferenceRemoved}
               onSuccess={onSummaryEdited}
             />
-          </div>
-        )}
+          )}
+        </div>
       </TableCell>
 
       {/* Original hours — right-aligned, muted, 80px */}
