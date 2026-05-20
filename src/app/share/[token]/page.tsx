@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { ShieldOff } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
 import { formatDateFull } from '@/lib/jira/format-utils'
 import { getSharedBillingView } from '@/lib/share/queries'
 import SharedExportButton from '@/components/share/SharedExportButton'
@@ -109,72 +108,74 @@ export default async function SharedBillingPage({
             Billing Details
           </h2>
 
-          <div className="overflow-hidden rounded-md border border-border">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                {/* Sticky header */}
-                <thead className="sticky top-[52px] bg-white">
-                  <tr className="border-b border-border">
-                    <th className="text-left text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-2.5">
-                      Task
-                    </th>
-                    <th className="text-left text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-2.5 w-32 hidden sm:table-cell">
-                      Jira Issue
-                    </th>
-                    <th className="text-right text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-2.5 w-24">
-                      Hours
-                    </th>
-                  </tr>
-                </thead>
+          {/* Mobile: card list */}
+          <div className="flex flex-col gap-2 sm:hidden">
+            {view.tasks.map((task, index) => (
+              <div key={index} className="flex items-start justify-between gap-4 rounded-md border border-border px-4 py-3">
+                <div className="min-w-0">
+                  {task.isManual && (
+                    <span className="text-[11px] text-muted-foreground border border-border rounded px-1.5 py-0.5 mr-1.5 align-middle">
+                      Manual
+                    </span>
+                  )}
+                  <span className="text-sm">{task.displaySummary}</span>
+                </div>
+                <span className="text-sm font-semibold tabular-nums shrink-0">
+                  {task.effectiveHours.toFixed(2)}h
+                </span>
+              </div>
+            ))}
+            <div className="flex items-center justify-between rounded-md bg-gray-50 border border-border px-4 py-3 font-semibold">
+              <span className="text-sm">Total</span>
+              <span className="text-sm tabular-nums">{totalBilled.toFixed(2)}h</span>
+            </div>
+          </div>
 
-                <tbody className="divide-y divide-border">
-                  {view.tasks.map((task, index) => (
-                    <tr key={index} className="h-10 hover:bg-gray-50 transition-colors">
-                      {/* Task summary */}
-                      <td className="px-4 py-0">
-                        <div className="flex items-center gap-2">
-                          {task.isManual && (
-                            <span className="text-[11px] text-muted-foreground border border-border rounded px-1.5 py-0.5 shrink-0">
-                              Manual
-                            </span>
-                          )}
-                          <p className="text-sm truncate">{task.displaySummary}</p>
-                        </div>
-                      </td>
+          {/* Desktop: table */}
+          <div className="hidden sm:block overflow-hidden rounded-md border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr className="border-b border-border">
+                  <th className="text-left text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-2.5">
+                    Task
+                  </th>
+                  <th className="text-right text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-2.5 w-24">
+                    Hours
+                  </th>
+                </tr>
+              </thead>
 
-                      {/* Jira issue key — hidden on mobile */}
-                      <td className="px-4 py-0 w-32 hidden sm:table-cell">
-                        {task.displayIssueKey ? (
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {task.displayIssueKey}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
+              <tbody className="divide-y divide-border">
+                {view.tasks.map((task, index) => (
+                  <tr key={index} className="h-10 hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-0">
+                      <div className="flex items-center gap-2">
+                        {task.isManual && (
+                          <span className="text-[11px] text-muted-foreground border border-border rounded px-1.5 py-0.5 shrink-0">
+                            Manual
+                          </span>
                         )}
-                      </td>
-
-                      {/* Hours — right-aligned */}
-                      <td className="px-4 py-0 text-right w-24">
-                        <span className="text-sm font-semibold tabular-nums">
-                          {task.effectiveHours.toFixed(2)}h
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-
-                {/* Total row */}
-                <tfoot>
-                  <tr className="bg-gray-50 border-t-2 border-border font-semibold">
-                    <td className="px-4 py-2.5 text-sm">Total</td>
-                    <td className="hidden sm:table-cell" />
-                    <td className="px-4 py-2.5 text-right text-sm tabular-nums">
-                      {totalBilled.toFixed(2)}h
+                        <p className="text-sm truncate">{task.displaySummary}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-0 text-right w-24">
+                      <span className="text-sm font-semibold tabular-nums">
+                        {task.effectiveHours.toFixed(2)}h
+                      </span>
                     </td>
                   </tr>
-                </tfoot>
-              </table>
-            </div>
+                ))}
+              </tbody>
+
+              <tfoot>
+                <tr className="bg-gray-50 border-t-2 border-border font-semibold">
+                  <td className="px-4 py-2.5 text-sm">Total</td>
+                  <td className="px-4 py-2.5 text-right text-sm tabular-nums">
+                    {totalBilled.toFixed(2)}h
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
 
