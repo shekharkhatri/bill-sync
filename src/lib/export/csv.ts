@@ -7,8 +7,7 @@
  * Row 4:  Summary labels (Total Original Hours, Total Billed Hours, Line Items)
  * Row 5:  Summary values
  * Row 6:  (blank)
- * Row 7:  Column headers (Task, Jira Issue, Original Hours, Billed Hours,
- *                         Difference, Internal Note)
+ * Row 7:  Column headers (Task, Hours)
  * Row 8+: One row per billing task
  * Last:   Totals row
  *
@@ -50,7 +49,6 @@ export function buildBillingCSV(
   project: Project,
   billing: BillingWithStats,
   tasks: BillingTaskSummary[],
-  taskNotes: Record<string, string | null>,
 ): string {
   const CRLF = '\r\n'
   const rows: string[] = []
@@ -83,14 +81,12 @@ export function buildBillingCSV(
   // ── Section 2: Summary ────────────────────────────────────────────────────
   rows.push(
     [
-      escapeCSV('Total Original Hours'),
-      escapeCSV('Total Billed Hours'),
+      escapeCSV('Total Hours'),
       escapeCSV('Line Items'),
     ].join(','),
   )
   rows.push(
     [
-      escapeCSV(billing.totalOriginalHours.toFixed(2)),
       escapeCSV(billing.totalModifiedHours.toFixed(2)),
       escapeCSV(tasks.length),
     ].join(','),
@@ -101,51 +97,30 @@ export function buildBillingCSV(
   rows.push(
     [
       escapeCSV('Task'),
-      escapeCSV('Jira Issue'),
-      escapeCSV('Original Hours'),
-      escapeCSV('Billed Hours'),
-      escapeCSV('Difference'),
-      escapeCSV('Internal Note'),
+      escapeCSV('Hours'),
     ].join(','),
   )
 
-  let totalOriginal = 0
   let totalEffective = 0
 
   for (const task of tasks) {
-    const originalHours = task.totalOriginalSeconds / 3600
     const effectiveHours = task.effectiveSeconds / 3600
-    const diff = effectiveHours - originalHours
-    const diffStr = diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)
-    const note = taskNotes[task.jiraIssueKey] ?? null
 
     rows.push(
       [
         escapeCSV(task.displaySummary),
-        escapeCSV(task.displayIssueKey ?? ''),
-        escapeCSV(originalHours.toFixed(2)),
         escapeCSV(effectiveHours.toFixed(2)),
-        escapeCSV(diffStr),
-        escapeCSV(note),
       ].join(','),
     )
 
-    totalOriginal += originalHours
     totalEffective += effectiveHours
   }
 
   // ── Section 4: Totals row ─────────────────────────────────────────────────
-  const totalDiff = totalEffective - totalOriginal
-  const totalDiffStr = totalDiff > 0 ? `+${totalDiff.toFixed(2)}` : totalDiff.toFixed(2)
-
   rows.push(
     [
-      escapeCSV(''),
       escapeCSV('TOTAL'),
-      escapeCSV(totalOriginal.toFixed(2)),
       escapeCSV(totalEffective.toFixed(2)),
-      escapeCSV(totalDiffStr),
-      escapeCSV(''),
     ].join(','),
   )
 
@@ -157,7 +132,7 @@ export function buildBillingCSV(
  * Intentionally excludes: status, original hours, internal notes, difference.
  * These are internal fields and must not appear in the external-facing export.
  *
- * Columns: Task, Jira Issue, Hours
+ * Columns: Task, Hours
  */
 export function buildSharedBillingCSV(
   projectName: string,
@@ -208,7 +183,6 @@ export function buildSharedBillingCSV(
   rows.push(
     [
       escapeCSV('Task'),
-      escapeCSV('Jira Issue'),
       escapeCSV('Hours'),
     ].join(','),
   )
@@ -219,7 +193,6 @@ export function buildSharedBillingCSV(
     rows.push(
       [
         escapeCSV(task.displaySummary),
-        escapeCSV(task.displayIssueKey ?? ''),
         escapeCSV(task.effectiveHours.toFixed(2)),
       ].join(','),
     )
@@ -231,7 +204,6 @@ export function buildSharedBillingCSV(
   rows.push(
     [
       escapeCSV('TOTAL'),
-      escapeCSV(''),
       escapeCSV(totalEffective.toFixed(2)),
     ].join(','),
   )

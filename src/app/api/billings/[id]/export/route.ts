@@ -1,6 +1,6 @@
 import { createServerClient } from '@/lib/auth/clients'
 import { guardAction } from '@/lib/auth/permissions'
-import { getBillingWithStats, getBillingTaskSummaries, getTaskNotes } from '@/lib/billings/queries'
+import { getBillingWithStats, getBillingTaskSummaries } from '@/lib/billings/queries'
 import { getProjectById } from '@/lib/projects/queries'
 import { buildBillingCSV, getCSVFilename } from '@/lib/export/csv'
 import { db } from '@/lib/db/client'
@@ -48,14 +48,11 @@ export async function GET(
       return Response.json({ error: 'Project not found' }, { status: 404 })
     }
 
-    // 6. Fetch tasks and notes
-    const [tasks, taskNotes] = await Promise.all([
-      getBillingTaskSummaries(id),
-      getTaskNotes(id),
-    ])
+    // 6. Fetch tasks
+    const tasks = await getBillingTaskSummaries(id)
 
     // 7. Build CSV
-    const csv = buildBillingCSV(project, billing, tasks, taskNotes)
+    const csv = buildBillingCSV(project, billing, tasks)
     const filename = getCSVFilename(project, billing)
 
     // 8. Log export — fire and forget, non-blocking
