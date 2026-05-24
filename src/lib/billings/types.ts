@@ -34,6 +34,7 @@ export interface Worklog {
   isManual: boolean
   customSummary: string | null
   jiraReferenceRemoved: boolean
+  sortOrder: number | null
   createdAt: Date
   updatedAt: Date
 }
@@ -51,6 +52,7 @@ export interface BillingTaskSummary {
   effectiveSeconds: number
   worklogCount: number
   authors: string[]
+  sortOrder: number
 }
 
 export interface WorklogWithEffective extends Worklog {

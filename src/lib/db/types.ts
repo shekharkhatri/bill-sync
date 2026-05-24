@@ -87,6 +87,7 @@ export interface WorklogTable {
   is_manual: Generated<boolean>
   custom_summary: string | null
   jira_reference_removed: Generated<boolean>
+  sort_order: number | null
   created_at: Generated<Date>
   updated_at: Generated<Date>
 }

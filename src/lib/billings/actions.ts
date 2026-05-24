@@ -21,6 +21,7 @@ import {
   deleteWorklogRow,
   updateTaskHours,
   deleteTaskWorklogs,
+  updateTaskSortOrder,
 } from '@/lib/billings/queries'
 import { parseDateString } from '@/lib/billings/date-utils'
 import { db } from '@/lib/db/client'
@@ -528,6 +529,43 @@ export async function deleteTaskAction(
     return { success: true, data: undefined }
   } catch {
     return { success: false, error: 'Failed to delete task.' }
+  }
+}
+
+export async function reorderTasksAction(
+  billingId: string,
+  orderedIssueKeys: string[],
+): Promise<ActionResult> {
+  try {
+    const user = await requireSession()
+    const permError = await guardAction(user.id, 'worklog:edit')
+    if (permError) return { success: false, error: permError }
+
+    const billing = await getBillingById(billingId)
+    if (!billing) return { success: false, error: 'Billing period not found.' }
+
+    if (billing.status !== 'draft') {
+      return { success: false, error: 'Tasks can only be reordered in draft billings.' }
+    }
+
+    if (!Array.isArray(orderedIssueKeys) || orderedIssueKeys.length === 0) {
+      return { success: false, error: 'orderedIssueKeys must be a non-empty array.' }
+    }
+    if (orderedIssueKeys.length > 500) {
+      return { success: false, error: 'Too many tasks.' }
+    }
+    for (const key of orderedIssueKeys) {
+      if (typeof key !== 'string' || key.trim() === '') {
+        return { success: false, error: 'Each issue key must be a non-empty string.' }
+      }
+    }
+
+    await updateTaskSortOrder(billingId, orderedIssueKeys)
+
+    // No revalidatePath — reorder is optimistic in the UI
+    return { success: true, data: undefined }
+  } catch {
+    return { success: false, error: 'Failed to save order.' }
   }
 }
 

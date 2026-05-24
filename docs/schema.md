@@ -29,6 +29,7 @@ Kysely types: src/lib/db/types.ts (manually maintained — run codegen if schema
 | is_manual              | bool    | DEFAULT false — true for user-added rows      |
 | custom_summary         | text?   | overrides issue_summary in UI when set        |
 | jira_reference_removed | bool    | DEFAULT false — hides jira_issue_key in UI    |
+| sort_order             | int?    | task display order within billing, null = unset |
 
 ## Effective Value Pattern (computed in query mapping, never stored)
 ```

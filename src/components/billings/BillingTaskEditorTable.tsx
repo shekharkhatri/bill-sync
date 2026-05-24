@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AlertCircle,
+  ArrowUpDown,
   CheckCircle2,
   CircleDot,
+  GripVertical,
   Inbox,
   Loader2,
   RotateCcw,
@@ -13,6 +15,24 @@ import {
   Trash2,
   Wrench,
 } from 'lucide-react'
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -28,9 +48,15 @@ import {
 } from '@/components/ui/table'
 import { AddManualTaskDialog } from '@/components/billings/AddManualTaskDialog'
 import BillingTaskEditorRow from '@/components/billings/BillingTaskEditorRow'
+import SortableTaskRow from '@/components/billings/SortableTaskRow'
 import HoursInput from '@/components/billings/HoursInput'
 import { Badge } from '@/components/ui/badge'
-import { updateTaskHoursAction, resetAllWorklogsAction, deleteTaskAction } from '@/lib/billings/actions'
+import {
+  updateTaskHoursAction,
+  resetAllWorklogsAction,
+  deleteTaskAction,
+  reorderTasksAction,
+} from '@/lib/billings/actions'
 import type { BillingStatus, BillingTaskSummary } from '@/lib/billings/types'
 
 interface BillingTaskEditorTableProps {
@@ -51,6 +77,10 @@ function initEdits(tasks: BillingTaskSummary[]): TaskEdits {
   return edits
 }
 
+function sortByOrder(tasks: BillingTaskSummary[]): BillingTaskSummary[] {
+  return [...tasks].sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999))
+}
+
 export default function BillingTaskEditorTable({
   billingId,
   billingStatus,
@@ -66,7 +96,29 @@ export default function BillingTaskEditorTable({
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null)
   const [, startDeleteTransition] = useTransition()
 
-  const taskMap = Object.fromEntries(tasks.map((t) => [t.jiraIssueKey, t]))
+  // Local ordered task list — drives display order and DnD
+  const [taskOrder, setTaskOrder] = useState<BillingTaskSummary[]>(() => sortByOrder(tasks))
+  const [activeTask, setActiveTask] = useState<BillingTaskSummary | null>(null)
+  const [isOrderDirty, setIsOrderDirty] = useState(false)
+  const [isSavingOrder, setIsSavingOrder] = useState(false)
+
+  // Sync taskOrder when tasks prop changes (after router.refresh())
+  useEffect(() => {
+    setTaskOrder(sortByOrder(tasks))
+    setIsOrderDirty(false)
+  }, [tasks])
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  )
+
+  const taskMap = Object.fromEntries(taskOrder.map((t) => [t.jiraIssueKey, t]))
 
   // A task is dirty if the local edit differs from the current DB effective value
   const dirtyKeys = Object.entries(edits)
@@ -88,7 +140,6 @@ export default function BillingTaskEditorTable({
   function getLocalSeconds(task: BillingTaskSummary): number | null {
     const local = edits[task.jiraIssueKey]
     if (local === null) return null
-    // If user edited to match original, treat as null (no modification)
     if (local === task.totalOriginalSeconds) return null
     return local
   }
@@ -149,33 +200,110 @@ export default function BillingTaskEditorTable({
     })
   }
 
-  const isBusy = isSaving || isResetting
+  function handleDragStart(event: DragStartEvent): void {
+    const task = taskOrder.find((t) => t.jiraIssueKey === event.active.id)
+    setActiveTask(task ?? null)
+  }
+
+  function handleDragEnd(event: DragEndEvent): void {
+    const { active, over } = event
+    setActiveTask(null)
+
+    if (!over || active.id === over.id) return
+
+    const oldIndex = taskOrder.findIndex((t) => t.jiraIssueKey === active.id)
+    const newIndex = taskOrder.findIndex((t) => t.jiraIssueKey === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    // Local reorder only — user must click "Save Order" to persist
+    const reordered = arrayMove(taskOrder, oldIndex, newIndex)
+    setTaskOrder(reordered)
+    setIsOrderDirty(true)
+  }
+
+  async function handleSaveOrder(): Promise<void> {
+    setIsSavingOrder(true)
+    setSaveError(null)
+    try {
+      const orderedKeys = taskOrder.map((t) => t.jiraIssueKey)
+      const result = await reorderTasksAction(billingId, orderedKeys)
+      if (result.success) {
+        setIsOrderDirty(false)
+      } else {
+        setSaveError(result.error)
+      }
+    } finally {
+      setIsSavingOrder(false)
+    }
+  }
+
+  const isBusy = isSaving || isResetting || isSavingOrder
 
   const totalEffectiveHours =
-    tasks.reduce((sum, t) => {
+    taskOrder.reduce((sum, t) => {
       const local = edits[t.jiraIssueKey]
       return sum + (local !== null ? local : t.effectiveSeconds)
     }, 0) / 3600
 
-  const manualCount = tasks.filter((t) => t.isManual).length
+  const manualCount = taskOrder.filter((t) => t.isManual).length
 
   return (
     <div>
       {/* Toolbar */}
       {isEditable && (
         <div className="flex items-center justify-between mb-3">
-          <div>
+          {/* Left: status indicators + drag hint */}
+          <div className="flex items-center gap-3">
             {dirtyCount > 0 ? (
-              <p className="text-sm text-amber-600 flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 text-[13px] text-amber-600">
                 <CircleDot className="h-3.5 w-3.5" />
                 {dirtyCount} unsaved change{dirtyCount === 1 ? '' : 's'}
-              </p>
+              </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No unsaved changes</p>
+              <p className="text-[13px] text-neutral-400">No unsaved changes</p>
+            )}
+
+            {isOrderDirty && dirtyCount > 0 && (
+              <span className="text-neutral-200">·</span>
+            )}
+
+            {isOrderDirty && (
+              <div className="flex items-center gap-1.5 text-[13px] text-amber-600">
+                <GripVertical className="h-3.5 w-3.5" />
+                Order changed
+              </div>
+            )}
+
+            {!isOrderDirty && !isSavingOrder && taskOrder.length > 1 && (
+              <div className="flex items-center gap-1.5 text-[13px] text-neutral-400 select-none">
+                <GripVertical className="h-3.5 w-3.5" />
+                Drag rows to reorder
+              </div>
             )}
           </div>
 
+          {/* Right: Save Order | Add Task | Reset All | Save Changes */}
           <div className="flex items-center gap-2">
+            {isOrderDirty && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSaveOrder}
+                  disabled={isBusy}
+                  className="h-8 px-3 text-[13px] gap-1.5"
+                >
+                  {isSavingOrder ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ArrowUpDown className="h-3.5 w-3.5" />
+                  )}
+                  {isSavingOrder ? 'Saving Order...' : 'Save Order'}
+                </Button>
+                <Separator orientation="vertical" className="h-4 mx-1" />
+              </>
+            )}
+
             <AddManualTaskDialog billingId={billingId} onSuccess={() => router.refresh()} />
 
             <Separator orientation="vertical" className="h-5 mx-1" />
@@ -225,7 +353,7 @@ export default function BillingTaskEditorTable({
         </Alert>
       )}
 
-      {tasks.length === 0 ? (
+      {taskOrder.length === 0 ? (
         <div className="border border-dashed border-border rounded-md py-12 text-center">
           <Inbox className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">No tasks found for this billing period.</p>
@@ -239,7 +367,7 @@ export default function BillingTaskEditorTable({
         <>
           {/* Mobile card list */}
           <div className="md:hidden space-y-2">
-            {tasks.map((task) => {
+            {taskOrder.map((task) => {
               const local = getLocalSeconds(task)
               const isDirty = local !== null && local !== task.effectiveSeconds
               const dbIsModified = task.effectiveSeconds !== task.totalOriginalSeconds
@@ -248,7 +376,6 @@ export default function BillingTaskEditorTable({
               return (
                 <Card key={task.jiraIssueKey} className={isDirty ? 'border-amber-300' : ''}>
                   <CardContent className="pt-3 pb-3 space-y-2">
-                    {/* Header row: badge + actions */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         {task.isManual ? (
@@ -288,10 +415,8 @@ export default function BillingTaskEditorTable({
                       )}
                     </div>
 
-                    {/* Summary */}
                     <p className="text-sm">{task.displaySummary}</p>
 
-                    {/* Hours row */}
                     <div className="flex items-center gap-3 pt-1">
                       <div>
                         <p className="text-xs text-muted-foreground mb-0.5">Original</p>
@@ -321,66 +446,110 @@ export default function BillingTaskEditorTable({
               )
             })}
 
-            {/* Mobile total */}
             <div className="flex justify-between items-center px-1 pt-1 border-t">
               <span className="text-sm font-medium">Total</span>
               <span className="text-sm font-medium">{totalEffectiveHours.toFixed(2)}h</span>
             </div>
           </div>
 
-          {/* Desktop table */}
-          <div className="hidden md:block border border-border rounded-md overflow-hidden">
-            <Table className="table-fixed w-full">
-              <TableHeader>
-                <TableRow className="bg-gray-50 border-b border-border">
-                  <TableHead className="w-[88px] text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-3 py-2">
-                    Issue
-                  </TableHead>
-                  <TableHead className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-3 py-2">
-                    Summary
-                  </TableHead>
-                  <TableHead className="w-[80px] text-right text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-3 py-2">
-                    Original
-                  </TableHead>
-                  <TableHead className="w-[120px] text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-3 py-2">
-                    Billed
-                  </TableHead>
-                  <TableHead className="w-6" />
-                  <TableHead className="w-12" />
-                </TableRow>
-              </TableHeader>
+          {/* Desktop table with drag & drop */}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis]}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={taskOrder.map((t) => t.jiraIssueKey)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="hidden md:block border border-border rounded-md overflow-hidden">
+                <Table className="table-fixed w-full">
+                  <TableHeader>
+                    <TableRow className="bg-gray-50 border-b border-border">
+                      <TableHead className="w-8" />
+                      <TableHead className="w-[88px] text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-3 py-2">
+                        Issue
+                      </TableHead>
+                      <TableHead className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-3 py-2">
+                        Summary
+                      </TableHead>
+                      <TableHead className="w-[80px] text-right text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-3 py-2">
+                        Original
+                      </TableHead>
+                      <TableHead className="w-[120px] text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-3 py-2">
+                        Billed
+                      </TableHead>
+                      <TableHead className="w-6" />
+                      <TableHead className="w-12" />
+                    </TableRow>
+                  </TableHeader>
 
-              <TableBody>
-                {tasks.map((task) => (
-                  <BillingTaskEditorRow
-                    key={task.jiraIssueKey}
-                    billingId={billingId}
-                    task={task}
-                    isEditable={isEditable}
-                    localSeconds={getLocalSeconds(task)}
-                    instanceUrl={instanceUrl}
-                    onHoursChange={(seconds) => handleHoursChange(task.jiraIssueKey, seconds)}
-                    onSummaryEdited={() => router.refresh()}
-                    onDelete={handleDeleteTask}
-                    disabled={isBusy}
-                  />
-                ))}
-              </TableBody>
+                  <TableBody>
+                    {taskOrder.map((task) => (
+                      <SortableTaskRow
+                        key={task.jiraIssueKey}
+                        id={task.jiraIssueKey}
+                        disabled={!isEditable || isSaving || isResetting || isSavingOrder}
+                      >
+                        {({ nodeRef, dragStyle, dragHandleListeners, dragHandleAttributes, isDragging }) => (
+                          <BillingTaskEditorRow
+                            billingId={billingId}
+                            task={task}
+                            isEditable={isEditable}
+                            localSeconds={getLocalSeconds(task)}
+                            instanceUrl={instanceUrl}
+                            onHoursChange={(seconds) => handleHoursChange(task.jiraIssueKey, seconds)}
+                            onSummaryEdited={() => router.refresh()}
+                            onDelete={handleDeleteTask}
+                            disabled={isBusy}
+                            showDragHandle={isEditable}
+                            dragHandleListeners={dragHandleListeners}
+                            dragHandleAttributes={dragHandleAttributes}
+                            isDragging={isDragging}
+                            nodeRef={nodeRef}
+                            dragStyle={dragStyle}
+                          />
+                        )}
+                      </SortableTaskRow>
+                    ))}
+                  </TableBody>
 
-              <TableFooter>
-                <TableRow className="bg-gray-50 border-t border-border font-medium">
-                  <TableCell colSpan={3} className="text-right text-[13px] text-muted-foreground px-3 py-2">
-                    Total
-                  </TableCell>
-                  <TableCell className="text-[13px] font-semibold tabular-nums px-3 py-2">
-                    {totalEffectiveHours.toFixed(2)}h
-                  </TableCell>
-                  <TableCell />
-                  <TableCell />
-                </TableRow>
-              </TableFooter>
-            </Table>
-          </div>
+                  <TableFooter>
+                    <TableRow className="bg-gray-50 border-t border-border font-medium">
+                      <TableCell colSpan={4} className="text-right text-[13px] text-muted-foreground px-3 py-2">
+                        Total
+                      </TableCell>
+                      <TableCell className="text-[13px] font-semibold tabular-nums px-3 py-2">
+                        {totalEffectiveHours.toFixed(2)}h
+                      </TableCell>
+                      <TableCell />
+                      <TableCell />
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+              </div>
+            </SortableContext>
+
+            {/* Drag ghost overlay */}
+            <DragOverlay>
+              {activeTask ? (
+                <div className="flex items-center gap-3 px-3 py-2.5 bg-white border border-neutral-200 rounded shadow-sm text-sm text-neutral-900 opacity-95 cursor-grabbing">
+                  <GripVertical className="h-4 w-4 text-neutral-400 shrink-0" />
+                  {activeTask.displayIssueKey && (
+                    <span className="font-mono text-[11px] border border-neutral-200 rounded px-1.5 py-0.5 text-neutral-500 shrink-0">
+                      {activeTask.displayIssueKey}
+                    </span>
+                  )}
+                  <span className="truncate max-w-[300px]">{activeTask.displaySummary}</span>
+                  <span className="ml-auto tabular-nums text-neutral-500 shrink-0">
+                    {(activeTask.effectiveSeconds / 3600).toFixed(2)}h
+                  </span>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
 
           {manualCount > 0 && (
             <p className="text-xs text-muted-foreground mt-2 text-right">

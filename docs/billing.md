@@ -54,6 +54,18 @@ Sets `custom_summary` on the single worklog row.
 `removeJiraReference=true` → `displayIssueKey` becomes null, key kept in DB for audit.
 Calls `updateWorklogSummaryAction(worklogId, customSummary, removeJiraReference)`.
 
+## Task Reordering
+Available: draft status only
+Library: @dnd-kit/core + @dnd-kit/sortable + @dnd-kit/modifiers + @dnd-kit/utilities
+Stored in: worklogs.sort_order (INTEGER, initialized on pull via migration)
+Mechanism: local arrayMove on drag end — persisted only when user clicks "Save Order" button
+               isOrderDirty flag tracks unsaved order; resets to false on router.refresh()
+Reflected in: CSV export (getBillingTaskSummaries orders by sort_order ASC NULLS LAST)
+Components: DragHandle.tsx, SortableTaskRow.tsx (render prop passes nodeRef+dragStyle to row)
+Activation: PointerSensor with distance:8 (prevents accidental drags on click)
+Keyboard: KeyboardSensor with sortableKeyboardCoordinates (accessibility)
+Overlay: DragOverlay ghost shows issue key + summary + hours while dragging
+
 ## Server Actions (src/lib/billings/actions.ts)
 | Action                        | Permission      | Notes                                   |
 |-------------------------------|-----------------|-----------------------------------------|
@@ -69,6 +81,7 @@ Calls `updateWorklogSummaryAction(worklogId, customSummary, removeJiraReference)
 | addManualTaskAction           | worklog:edit    | inserts manual task (used by BillingTaskEditorTable) |
 | updateTaskSummaryAction       | worklog:edit    | per-issueKey summary update             |
 | deleteManualTaskAction        | worklog:edit    | removes manual task (used by BillingTaskEditorTable) |
+| reorderTasksAction            | worklog:edit    | persists drag order to worklogs.sort_order, draft only, no revalidatePath |
 | updateTaskHoursAction         | worklog:edit    | sets total billed hours for a task, distributes proportionally across worklogs |
 
 ## Key Query Functions (src/lib/billings/queries.ts)
@@ -79,7 +92,8 @@ Calls `updateWorklogSummaryAction(worklogId, customSummary, removeJiraReference)
 `updateWorklogSummary(worklogId, customSummary, removeJiraReference)`
 `deleteWorklogRow(worklogId)`
 `insertManualTask`, `updateTaskSummary`, `deleteManualTask` (legacy task-level)
-`getBillingTaskSummaries` → used by BillingTaskEditorTable
+`getBillingTaskSummaries` → used by BillingTaskEditorTable, orders by sort_order ASC NULLS LAST
+`updateTaskSortOrder(billingId, orderedIssueKeys)` → sequential UPDATE per issueKey, used by reorderTasksAction
 `getTaskNotes(billingId)` → `Record<string, string | null>` keyed by jiraIssueKey, used for CSV export
 `checkBillingOverlap` → warns but does not block on overlap
 

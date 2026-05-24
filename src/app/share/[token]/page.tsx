@@ -4,6 +4,7 @@ import { Separator } from '@/components/ui/separator'
 import { formatDateFull } from '@/lib/jira/format-utils'
 import { getSharedBillingView } from '@/lib/share/queries'
 import SharedExportButton from '@/components/share/SharedExportButton'
+import TaskSummaryCell from '@/components/share/TaskSummaryCell'
 
 interface SharedBillingPageProps {
   params: Promise<{ token: string }>
@@ -90,9 +91,9 @@ export default async function SharedBillingPage({
           </div>
         </div>
 
-        {/* Single "Total Hours" stat — no original hours, no line items count */}
-        <div className="my-6">
-          <div className="inline-flex flex-col px-6 py-4 border border-border rounded-md">
+        {/* Single "Total Hours" stat */}
+        <div className="my-6 -mx-4 sm:mx-0 overflow-x-auto scrollbar-none px-4 sm:px-0">
+          <div className="inline-flex flex-col px-6 py-4 border border-border rounded-md min-w-max">
             <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
               Total Hours
             </span>
@@ -113,11 +114,6 @@ export default async function SharedBillingPage({
             {view.tasks.map((task, index) => (
               <div key={index} className="flex items-start justify-between gap-4 rounded-md border border-border px-4 py-3">
                 <div className="min-w-0">
-                  {task.isManual && (
-                    <span className="text-[11px] text-muted-foreground border border-border rounded px-1.5 py-0.5 mr-1.5 align-middle">
-                      Manual
-                    </span>
-                  )}
                   <span className="text-sm">{task.displaySummary}</span>
                 </div>
                 <span className="text-sm font-semibold tabular-nums shrink-0">
@@ -131,15 +127,22 @@ export default async function SharedBillingPage({
             </div>
           </div>
 
-          {/* Desktop: table */}
+          {/* Desktop: table — table-fixed ensures Hours col is always visible */}
           <div className="hidden sm:block overflow-hidden rounded-md border border-border">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
+              {/* colgroup controls column widths in table-fixed mode.
+                  style width on col is the only way to set this — justified exception. */}
+              <colgroup>
+                <col style={{ width: 'auto' }} />
+                <col style={{ width: '96px' }} />
+              </colgroup>
+
               <thead className="bg-gray-50">
                 <tr className="border-b border-border">
                   <th className="text-left text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-2.5">
                     Task
                   </th>
-                  <th className="text-right text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-2.5 w-24">
+                  <th className="text-right text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-2.5">
                     Hours
                   </th>
                 </tr>
@@ -148,18 +151,11 @@ export default async function SharedBillingPage({
               <tbody className="divide-y divide-border">
                 {view.tasks.map((task, index) => (
                   <tr key={index} className="h-10 hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-0">
-                      <div className="flex items-center gap-2">
-                        {task.isManual && (
-                          <span className="text-[11px] text-muted-foreground border border-border rounded px-1.5 py-0.5 shrink-0">
-                            Manual
-                          </span>
-                        )}
-                        <p className="text-sm truncate">{task.displaySummary}</p>
-                      </div>
+                    <td className="px-4 py-0 min-w-0 max-w-0">
+                      <TaskSummaryCell summary={task.displaySummary} />
                     </td>
-                    <td className="px-4 py-0 text-right w-24">
-                      <span className="text-sm font-semibold tabular-nums">
+                    <td className="px-4 py-0 text-right">
+                      <span className="text-sm font-semibold tabular-nums whitespace-nowrap">
                         {task.effectiveHours.toFixed(2)}h
                       </span>
                     </td>
@@ -169,8 +165,10 @@ export default async function SharedBillingPage({
 
               <tfoot>
                 <tr className="bg-gray-50 border-t-2 border-border font-semibold">
-                  <td className="px-4 py-2.5 text-sm">Total</td>
-                  <td className="px-4 py-2.5 text-right text-sm tabular-nums">
+                  <td className="px-4 py-2.5 min-w-0">
+                    <span className="text-sm font-semibold text-neutral-900">Total</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-sm tabular-nums whitespace-nowrap">
                     {totalBilled.toFixed(2)}h
                   </td>
                 </tr>

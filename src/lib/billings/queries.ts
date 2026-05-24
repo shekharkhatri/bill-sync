@@ -136,6 +136,7 @@ export async function getWorklogsByBilling(billingId: string): Promise<WorklogWi
       isManual: row.is_manual,
       customSummary: row.custom_summary,
       jiraReferenceRemoved: row.jira_reference_removed,
+      sortOrder: row.sort_order,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       effectiveSeconds,
@@ -322,10 +323,12 @@ export async function getBillingTaskSummaries(billingId: string): Promise<Billin
       sql<string>`SUM(COALESCE(modified_seconds, original_seconds))`.as('total_modified_seconds'),
       sql<string>`COUNT(id)`.as('worklog_count'),
       sql<string>`array_agg(DISTINCT author_name ORDER BY author_name)`.as('authors'),
+      sql<number | null>`MIN(sort_order)`.as('sort_order'),
     ])
     .where('billing_id', '=', billingId)
     .groupBy(['jira_issue_key', 'issue_summary', 'is_manual', 'custom_summary', 'jira_reference_removed'])
-    .orderBy('jira_issue_key', 'asc')
+    .orderBy(sql`MIN(sort_order) ASC NULLS LAST`)
+    .orderBy(sql`SUM(COALESCE(modified_seconds, original_seconds)) DESC`)
     .execute()
 
   return rows.map((row) => {
@@ -349,8 +352,33 @@ export async function getBillingTaskSummaries(billingId: string): Promise<Billin
       effectiveSeconds,
       worklogCount: Number(row.worklog_count),
       authors: row.authors as unknown as string[],
+      sortOrder: row.sort_order ?? 999,
     }
   })
+}
+
+/**
+ * Persists the display order of tasks within a billing.
+ * Updates all worklog rows for each task to share the same sort_order value.
+ * orderedIssueKeys[0] → sort_order = 1, orderedIssueKeys[1] → sort_order = 2, etc.
+ */
+export async function updateTaskSortOrder(
+  billingId: string,
+  orderedIssueKeys: string[],
+): Promise<void> {
+  try {
+    for (let i = 0; i < orderedIssueKeys.length; i++) {
+      await db
+        .updateTable('worklogs')
+        .set({ sort_order: i + 1, updated_at: new Date() })
+        .where('billing_id', '=', billingId)
+        .where('jira_issue_key', '=', orderedIssueKeys[i])
+        .execute()
+    }
+  } catch (err) {
+    console.error('[updateTaskSortOrder] Failed:', err)
+    throw err
+  }
 }
 
 /**

@@ -94,6 +94,8 @@ export function buildBillingCSV(
   rows.push('') // blank separator
 
   // ── Section 3: Line items ─────────────────────────────────────────────────
+  // Tasks are ordered by sort_order (user-defined drag order).
+  // Order is set via reorderTasksAction and stored in worklogs.sort_order.
   rows.push(
     [
       escapeCSV('Task'),

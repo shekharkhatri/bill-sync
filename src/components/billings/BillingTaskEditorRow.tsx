@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { EditTaskSummaryDialog } from '@/components/billings/EditTaskSummaryDialog'
+import DragHandle from '@/components/billings/DragHandle'
 import HoursInput from '@/components/billings/HoursInput'
+import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/core'
 import type { BillingTaskSummary } from '@/lib/billings/types'
 
 interface BillingTaskEditorRowProps {
@@ -19,6 +21,12 @@ interface BillingTaskEditorRowProps {
   onSummaryEdited?: () => void
   onDelete?: (issueKey: string) => void
   disabled?: boolean
+  showDragHandle: boolean
+  dragHandleListeners?: DraggableSyntheticListeners | undefined
+  dragHandleAttributes?: DraggableAttributes
+  isDragging?: boolean
+  nodeRef?: (node: HTMLElement | null) => void
+  dragStyle?: React.CSSProperties
 }
 
 export default function BillingTaskEditorRow({
@@ -31,6 +39,12 @@ export default function BillingTaskEditorRow({
   onSummaryEdited,
   onDelete,
   disabled,
+  showDragHandle,
+  dragHandleListeners,
+  dragHandleAttributes,
+  isDragging = false,
+  nodeRef,
+  dragStyle,
 }: BillingTaskEditorRowProps): React.JSX.Element {
   // A row is dirty if localSeconds has been set and differs from the DB effective value
   const isDirty = localSeconds !== null && localSeconds !== task.effectiveSeconds
@@ -48,7 +62,24 @@ export default function BillingTaskEditorRow({
   const showsModifiedBilled = !isEditable && dbIsModified
 
   return (
-    <TableRow className="h-10">
+    <TableRow
+      ref={nodeRef as React.Ref<HTMLTableRowElement>}
+      style={dragStyle}
+      className={`h-10 ${isDragging ? 'opacity-50' : ''}`}
+    >
+      {/* Drag handle — w-8, leftmost */}
+      <TableCell className="w-8 pr-0 align-middle px-2 py-0">
+        {showDragHandle && dragHandleAttributes ? (
+          <DragHandle
+            listeners={dragHandleListeners}
+            attributes={dragHandleAttributes}
+            isDragging={isDragging}
+          />
+        ) : (
+          <div className="w-6" />
+        )}
+      </TableCell>
+
       {/* Issue — monospace, muted, fixed 88px */}
       <TableCell className="w-[88px] align-middle px-3 py-0">
         {task.isManual ? (

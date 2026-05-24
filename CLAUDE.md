@@ -89,6 +89,8 @@ Confirm at end of response: "Docs updated: {files}"
 | HF    | Dev auth bypass (existing user)    | ✓ done    |
 | HF    | Shareable billing invoice links    | ✓ done    |
 | HF    | Worklog preview page fixes + CSV toggle | ✓ done |
+| HF    | Task drag-drop reorder + share page manual tag fix | ✓ done |
+| HF    | Reorder save button + share page hours column fix  | ✓ done |
 
 ## Known Pending
 - Batch 10: Toaster in layout, error boundaries on all pages
