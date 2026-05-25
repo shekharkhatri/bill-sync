@@ -24,11 +24,13 @@ src/app/
           new/page.tsx                  ← CreateBillingForm
           [billingId]/page.tsx          ← billing editor (WorklogEditorTable active)
   share/
-    [token]/page.tsx                    ← public shared billing view (no auth)
+    [token]/page.tsx                    ← public shared billing view (no auth); password-gated if passwordEnabled
+    [token]/password/page.tsx           ← password gate SC; renders PasswordGateForm CC
   api/
     auth/callback/route.ts              ← OAuth exchange + bootstrapUser
     billings/[id]/export/route.ts       ← CSV download RH ✓
     share/[token]/export/route.ts       ← public CSV export via share token
+    share/[token]/verify-password/route.ts ← POST: verify password, set HttpOnly cookie
 ```
 
 ## Lib
@@ -77,8 +79,10 @@ src/lib/
   share/
     types.ts              ← SharedBillingView, SharedTaskRow, SharedInvoiceView, BillingShareToken
     token.ts              ← generateShareToken, isTokenExpired SERVER ONLY
-    queries.ts            ← getShareToken, createShareToken, revokeShareToken, getSharedBillingView
-    actions.ts            ← generateShareLinkAction, revokeShareLinkAction SA
+    queries.ts            ← getShareToken, createShareToken, revokeShareToken, updateShareTokenPassword, getSharedBillingView
+    actions.ts            ← generateShareLinkAction, revokeShareLinkAction, updatePasswordAction SA
+    password.ts           ← hashPassword, verifyPassword, generatePassword SERVER ONLY
+    verify-cookie.ts      ← isSharePasswordVerified SERVER ONLY
   invoices/
     types.ts              ← InvoiceCurrency, Invoice, InvoiceWithLineItems, InvoiceLineItem, CompanySettingsMap…
     queries.ts            ← getInvoiceByBilling, createInvoice, updateInvoice, upsertLineItems, deleteInvoice
@@ -135,7 +139,8 @@ src/components/
     ShareLinkManager.tsx         ← CC, generate/revoke shareable link, copy URL
   share/
     SharedExportButton.tsx       ← CC, public CSV export via share token (no auth headers)
-    SharePageTabs.tsx            ← CC, underline tabs (Proforma Invoice | Worklog) on share page
+    SharePageTabs.tsx            ← CC, underline tabs (Invoice | Worklog) on share page
+    PasswordGateForm.tsx         ← CC, password input + submit; POSTs to verify-password route
   invoices/
     CompanySettingsForm.tsx      ← CC, 3-section settings form (company / bank / defaults)
     InvoiceMetaFields.tsx        ← CC, invoice #, date, due date, currency grid

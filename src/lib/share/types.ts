@@ -46,6 +46,8 @@ export interface BillingShareToken {
   expiresAt: Date | null
   isActive: boolean
   csvEnabled: boolean
+  passwordHash: string | null
+  passwordEnabled: boolean
 }
 
 export interface SharedBillingView {
@@ -67,6 +69,7 @@ export interface SharedBillingView {
   generatedAt: Date
   tokenId: string
   csvEnabled: boolean
+  passwordEnabled: boolean
 }
 
 export interface SharedTaskRow {

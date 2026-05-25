@@ -56,7 +56,16 @@ One per billing — UNIQUE constraint enforced.
 ## billing_share_tokens Key Columns
 `token` (URL-safe base64, 43 chars, 256-bit entropy), `is_active` (revoke by setting false),
 `expires_at` (null = no expiry), `billing_id` → billings ON DELETE CASCADE,
-`csv_enabled` (bool, default true) — gates CSV export on public Worklog Preview page
+`csv_enabled` (bool, default true) — gates CSV export on public Invoice Preview page
+`password_enabled` (bool, default false) — requires password to view link
+`password_hash` (TEXT nullable) — bcrypt hash of the password; NEVER sent to client
+
+Migration (run in Supabase SQL editor):
+```sql
+ALTER TABLE billing_share_tokens
+  ADD COLUMN IF NOT EXISTS password_hash TEXT,
+  ADD COLUMN IF NOT EXISTS password_enabled BOOLEAN NOT NULL DEFAULT false;
+```
 
 ## project_jira_configs Key Columns
 `instance_url`, `jira_project_key`, `user_email`, `encrypted_api_token`,
@@ -70,4 +79,4 @@ One per billing — UNIQUE constraint enforced.
 ## Migrations
 Run in Supabase SQL editor or: `psql -d $DATABASE_URL -f src/lib/db/schema.sql`
 All `ADD COLUMN IF NOT EXISTS` — safe to re-run.
-Last migration added: `is_manual`, `custom_summary`, `jira_reference_removed` on worklogs.
+Last migration added: `password_hash`, `password_enabled` on billing_share_tokens.

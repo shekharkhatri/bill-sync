@@ -113,7 +113,7 @@ Logging: `export_logs` (billing_id, exported_by, format='csv')
 Filename: `{sanitized-client}-{sanitized-label}-billing.csv`
 Trigger: `ExportButton` CC → `fetch()` → blob → programmatic `<a>` download
 
-## Proforma Invoice
+## Invoice
 One invoice per billing (UNIQUE constraint on `billing_id`). Created and edited via `InvoiceEditorForm` CC on the billing detail page, gated by `billing:finalize` permission.
 
 ### Key Query Functions (`src/lib/invoices/queries.ts`)
@@ -159,7 +159,7 @@ Accessible via Settings link in user dropdown (layout.tsx)
 ### Public Invoice View (share page)
 `SharedInvoiceView` and `SharedInvoiceLineItem` in `src/lib/share/types.ts`
 `getSharedBillingView` fetches invoice and computes totals server-side.
-`SharePageTabs` CC: underline tabs (Proforma Invoice | Worklog) — shown only when invoice exists.
+`SharePageTabs` CC: underline tabs (Invoice | Worklog) — shown only when invoice exists.
 If no invoice: worklog table rendered directly with no tabs.
 
 ## Shareable Links
@@ -169,7 +169,7 @@ Permission: `billing:finalize` required to generate, revoke, or toggle CSV
 Token: 43-char URL-safe base64, ~256-bit entropy, generated server-side via `node:crypto`
 URL format: `{APP_URL}/share/{token}`
 Revoke: `revokeShareToken()` sets `is_active = false` — link stops working immediately
-Public page: `src/app/share/[token]/page.tsx` — **Worklog Preview** — no auth, noindex robots meta
+Public page: `src/app/share/[token]/page.tsx` — **Invoice Preview** — no auth, noindex robots meta
 Public export: `GET /api/share/[token]/export` — CSV, logs `format='csv-shared'`, gated by `csv_enabled`
 Manager UI: `ShareLinkManager` CC on billing detail page (permission-gated via PermissionGuard)
 One active link per billing — generating a new link revokes the previous one
@@ -181,8 +181,26 @@ One active link per billing — generating a new link revokes the previous one
 - Export route returns 403 if `csv_enabled = false` — message: "CSV export is not enabled for this shared link."
 - Export button on public page conditionally rendered: `{view.csvEnabled && <SharedExportButton />}`
 
+### Password Protection (`password_enabled` / `password_hash`)
+Optional bcrypt-hashed password on the share token. Gated by `password_enabled` bool.
+- Pre-generation: `ShareLinkManager` shows password toggle + input + generate button (disabled if password required but empty)
+- Active link: toggle to enable/disable; set/change password via inline input + "Set" button; remove via "Remove Password" button
+- On first visit: `src/app/share/[token]/page.tsx` checks `view.passwordEnabled` → `isSharePasswordVerified(token)` → redirects to `/share/{token}/password` if not verified
+- Gate page: `src/app/share/[token]/password/page.tsx` — SC, renders `PasswordGateForm` CC
+- Verify route: `POST /api/share/{token}/verify-password` — checks bcrypt hash, issues HttpOnly cookie
+- Cookie: `share_auth_{token[0:8]}` — HMAC-SHA256 signed, HttpOnly, Path=/share/{token}, Max-Age=86400 (24h)
+- `password_hash` is NEVER included in `SharedBillingView` — never sent to client
+- `password_enabled` (without hash) is included in `SharedBillingView` for gate check only
+- Server functions: `src/lib/share/password.ts` (SERVER ONLY) — `hashPassword`, `verifyPassword`, `generatePassword`
+- Cookie verify: `src/lib/share/verify-cookie.ts` (SERVER ONLY) — `isSharePasswordVerified`
+
+| Action                | Permission       | Notes                                           |
+|-----------------------|------------------|-------------------------------------------------|
+| generateShareLinkAction | billing:finalize | now accepts passwordEnabled + password params |
+| updatePasswordAction  | billing:finalize | set/change/remove password on active token      |
+
 ### External View Data Policy
-The public Worklog Preview intentionally hides internal data:
+The public Invoice Preview intentionally hides internal data:
 | Shown externally        | Hidden from external view           |
 |-------------------------|-------------------------------------|
 | Project name            | Billing status                      |

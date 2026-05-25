@@ -41,7 +41,7 @@ export default function SharePageTabs({
         <div className="flex gap-0">
           {(
             [
-              { key: 'invoice', label: 'Proforma Invoice' },
+              { key: 'invoice', label: 'Invoice' },
               { key: 'worklog', label: 'Worklog' },
             ] as { key: 'invoice' | 'worklog'; label: string }[]
           ).map(({ key, label }) => (

@@ -1,11 +1,12 @@
 # API Routes
 
 ## Route Handlers
-| Method | Path                           | Auth   | Purpose                                              |
-|--------|--------------------------------|--------|------------------------------------------------------|
-| GET    | /api/auth/callback             | —      | OAuth code exchange + bootstrap                      |
-| GET    | /api/billings/[id]/export      | ✓      | CSV download, logs to export_logs                    |
-| GET    | /api/share/[token]/export      | public | CSV export via share token, logs format='csv-shared' |
+| Method | Path                                    | Auth   | Purpose                                              |
+|--------|-----------------------------------------|--------|------------------------------------------------------|
+| GET    | /api/auth/callback                      | —      | OAuth code exchange + bootstrap                      |
+| GET    | /api/billings/[id]/export               | ✓      | CSV download, logs to export_logs                    |
+| GET    | /api/share/[token]/export               | public | CSV export via share token, logs format='csv-shared' |
+| POST   | /api/share/[token]/verify-password      | public | Verify share link password, issue HttpOnly cookie    |
 
 All other mutations go through Server Actions (not RH).
 
@@ -45,6 +46,13 @@ Auth: token-based only — no session. `getSharedBillingView()` validates token.
 Token invalid/revoked/expired → 403. Never reveal why (treat all as same error).
 Rate limiting: not yet implemented — see comment in `src/app/api/share/[token]/export/route.ts`.
 
+## Verify Password Route Detail (/api/share/[token]/verify-password)
+Auth: none (public endpoint).
+Body: `{ password: string }`.
+Validates token is active, passwordEnabled, checks bcrypt hash.
+On success: issues `share_auth_{token[0:8]}` HttpOnly cookie (HMAC-SHA256 signed, 24h Max-Age, Path=/share/{token}).
+Responses: 200 `{ok:true}` | 400 (missing/invalid body, not password-protected) | 401 (wrong password) | 404 (token not found/inactive).
+
 ## No RH for Mutations
 All create/update/delete operations use Server Actions.
-RH is only used when a binary response (file download) or OAuth exchange is needed.
+RH is only used when a binary response (file download), OAuth exchange, or cookie-setting (password verify) is needed.

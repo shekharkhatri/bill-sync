@@ -23,6 +23,8 @@ function mapToken(row: {
   expires_at: Date | null
   is_active: boolean
   csv_enabled: boolean
+  password_hash: string | null
+  password_enabled: boolean
 }): BillingShareToken {
   return {
     id: row.id,
@@ -33,6 +35,8 @@ function mapToken(row: {
     expiresAt: row.expires_at,
     isActive: row.is_active,
     csvEnabled: row.csv_enabled,
+    passwordHash: row.password_hash,
+    passwordEnabled: row.password_enabled,
   }
 }
 
@@ -69,6 +73,8 @@ export async function createShareToken(
   billingId: string,
   userId: string,
   csvEnabled: boolean,
+  passwordEnabled: boolean,
+  passwordHash: string | null,
   expiresAt?: Date,
 ): Promise<BillingShareToken> {
   const tokenValue = generateShareToken()
@@ -91,6 +97,8 @@ export async function createShareToken(
       expires_at: expiresAt ?? null,
       is_active: true,
       csv_enabled: csvEnabled,
+      password_enabled: passwordEnabled,
+      password_hash: passwordHash,
     })
     .returningAll()
     .executeTakeFirstOrThrow()
@@ -114,6 +122,22 @@ export async function revokeShareToken(billingId: string): Promise<void> {
     console.error('[revokeShareToken] Failed:', err)
     throw err
   }
+}
+
+/**
+ * Updates the password_enabled flag and hash on the active share token for a billing.
+ */
+export async function updateShareTokenPassword(
+  billingId: string,
+  passwordEnabled: boolean,
+  passwordHash: string | null,
+): Promise<void> {
+  await db
+    .updateTable('billing_share_tokens')
+    .set({ password_enabled: passwordEnabled, password_hash: passwordHash })
+    .where('billing_id', '=', billingId)
+    .where('is_active', '=', true)
+    .execute()
 }
 
 /**
@@ -224,6 +248,7 @@ export async function getSharedBillingView(token: string): Promise<SharedBilling
       generatedAt: new Date(),
       tokenId: tokenRow.id,
       csvEnabled: tokenRow.csvEnabled,
+      passwordEnabled: tokenRow.passwordEnabled,
     }
   } catch (err) {
     console.error('[getSharedBillingView] Failed:', err)

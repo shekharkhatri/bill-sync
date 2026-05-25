@@ -1,8 +1,10 @@
+import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { ShieldOff } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { formatDateFull } from '@/lib/jira/format-utils'
 import { getSharedBillingView } from '@/lib/share/queries'
+import { isSharePasswordVerified } from '@/lib/share/verify-cookie'
 import SharedExportButton from '@/components/share/SharedExportButton'
 import TaskSummaryCell from '@/components/share/TaskSummaryCell'
 import SharePageTabs from '@/components/share/SharePageTabs'
@@ -26,11 +28,11 @@ export async function generateMetadata({
   const view = await getSharedBillingView(token)
 
   if (!view) {
-    return { title: 'Worklog Preview — BillSync' }
+    return { title: 'Invoice Preview — BillSync' }
   }
 
   return {
-    title: `${view.project.clientName} — ${view.billing.label} | Worklog Preview`,
+    title: `${view.project.clientName} — ${view.billing.label} | Invoice Preview`,
     robots: 'noindex, nofollow',
   }
 }
@@ -40,6 +42,14 @@ export default async function SharedBillingPage({
 }: SharedBillingPageProps): Promise<React.ReactElement> {
   const { token } = await params
   const view = await getSharedBillingView(token)
+
+  /* ── Password gate ── */
+  if (view?.passwordEnabled) {
+    const verified = await isSharePasswordVerified(token)
+    if (!verified) {
+      redirect(`/share/${token}/password`)
+    }
+  }
 
   /* ── Invalid / revoked / expired ── */
   if (!view) {
@@ -69,7 +79,7 @@ export default async function SharedBillingPage({
               <span className="text-blue-600">Bill</span><span className="text-blue-400">Sync</span>
             </span>
             <Separator orientation="vertical" className="h-4" />
-            <span className="text-[13px] text-muted-foreground">Worklog Preview</span>
+            <span className="text-[13px] text-muted-foreground">Invoice Preview</span>
           </div>
 
           {/* Export CSV — only rendered when csvEnabled */}
@@ -85,7 +95,7 @@ export default async function SharedBillingPage({
           {/* Left: project + client */}
           <div>
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
-              Worklog Preview
+              Invoice Preview
             </p>
             <h1 className="text-xl font-semibold">{view.project.name}</h1>
             <p className="text-[13px] text-muted-foreground mt-0.5">{view.project.clientName}</p>

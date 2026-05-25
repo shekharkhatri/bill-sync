@@ -179,10 +179,10 @@ export default async function BillingDetailPage({
         </div>
       </PermissionGuard>
 
-      {/* Proforma Invoice section */}
+      {/* Invoice section */}
       <PermissionGuard permission="billing:finalize">
         <div className="mb-6">
-          <h2 className="text-sm font-semibold mb-3">Proforma Invoice</h2>
+          <h2 className="text-sm font-semibold mb-3">Invoice</h2>
           <InvoiceEditorForm
             billingId={billing.id}
             clientName={project.clientName}

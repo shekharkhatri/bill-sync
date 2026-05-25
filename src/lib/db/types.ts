@@ -116,6 +116,8 @@ export interface BillingShareTokenTable {
   expires_at: Date | null
   is_active: Generated<boolean>
   csv_enabled: Generated<boolean>
+  password_hash: string | null
+  password_enabled: Generated<boolean>
 }
 
 export interface CompanySettingsTable {

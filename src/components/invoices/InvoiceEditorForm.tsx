@@ -267,8 +267,7 @@ export default function InvoiceEditorForm({
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">
-            Proforma Invoice
+          <span className="text-sm font-semibold">Invoice
             {invoice?.invoiceNumber ? ` — ${invoice.invoiceNumber}` : ''}
           </span>
         </div>
