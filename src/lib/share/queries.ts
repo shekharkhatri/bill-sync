@@ -5,7 +5,14 @@ import { generateShareToken, isTokenExpired } from '@/lib/share/token'
 import { getBillingWithStats } from '@/lib/billings/queries'
 import { getBillingTaskSummaries } from '@/lib/billings/queries'
 import { getProjectById } from '@/lib/projects/queries'
-import type { BillingShareToken, SharedBillingView, SharedTaskRow } from '@/lib/share/types'
+import { getInvoiceByBilling } from '@/lib/invoices/queries'
+import type {
+  BillingShareToken,
+  SharedBillingView,
+  SharedTaskRow,
+  SharedInvoiceView,
+  SharedInvoiceLineItem,
+} from '@/lib/share/types'
 
 function mapToken(row: {
   id: string
@@ -142,7 +149,10 @@ export async function getSharedBillingView(token: string): Promise<SharedBilling
     const project = await getProjectById(billing.projectId)
     if (!project) return null
 
-    const taskList = await getBillingTaskSummaries(tokenRow.billingId)
+    const [taskList, invoiceData] = await Promise.all([
+      getBillingTaskSummaries(tokenRow.billingId),
+      getInvoiceByBilling(tokenRow.billingId),
+    ])
 
     const tasks: SharedTaskRow[] = taskList.map((task) => ({
       displaySummary: task.displaySummary,
@@ -150,6 +160,50 @@ export async function getSharedBillingView(token: string): Promise<SharedBilling
       effectiveHours: task.effectiveSeconds / 3600,
       isManual: task.isManual,
     }))
+
+    let sharedInvoice: SharedInvoiceView | null = null
+    if (invoiceData) {
+      const lineItems: SharedInvoiceLineItem[] = invoiceData.lineItems.map((li) => ({
+        description: li.description,
+        quantity: li.quantity,
+        unitPrice: li.unitPrice,
+        amount: li.quantity * li.unitPrice,
+      }))
+      const subtotal = lineItems.reduce((s, li) => s + li.amount, 0)
+      const discountValue = invoiceData.discountEnabled ? invoiceData.discountAmount : 0
+      const taxBase = subtotal - discountValue
+      const vatValue = invoiceData.vatEnabled ? (taxBase * invoiceData.vatRate) / 100 : 0
+      const total = taxBase + vatValue
+
+      sharedInvoice = {
+        invoiceNumber: invoiceData.invoiceNumber,
+        invoiceDate: invoiceData.invoiceDate,
+        dueDate: invoiceData.dueDate,
+        currency: invoiceData.currency,
+        clientName: invoiceData.clientName,
+        clientAddress: invoiceData.clientAddress,
+        clientEmail: invoiceData.clientEmail,
+        companyName: invoiceData.companyName,
+        companyAddress: invoiceData.companyAddress,
+        companyPhone: invoiceData.companyPhone,
+        companyEmail: invoiceData.companyEmail,
+        bankName: invoiceData.bankName,
+        bankAccount: invoiceData.bankAccount,
+        bankSwift: invoiceData.bankSwift,
+        vatEnabled: invoiceData.vatEnabled,
+        vatRate: invoiceData.vatRate,
+        vatLabel: invoiceData.vatLabel,
+        discountEnabled: invoiceData.discountEnabled,
+        discountAmount: invoiceData.discountAmount,
+        discountLabel: invoiceData.discountLabel,
+        notes: invoiceData.notes,
+        lineItems,
+        subtotal,
+        discountValue,
+        vatValue,
+        total,
+      }
+    }
 
     return {
       billing: {
@@ -166,6 +220,7 @@ export async function getSharedBillingView(token: string): Promise<SharedBilling
         clientName: project.clientName,
       },
       tasks,
+      invoice: sharedInvoice,
       generatedAt: new Date(),
       tokenId: tokenRow.id,
       csvEnabled: tokenRow.csvEnabled,

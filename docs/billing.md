@@ -113,6 +113,55 @@ Logging: `export_logs` (billing_id, exported_by, format='csv')
 Filename: `{sanitized-client}-{sanitized-label}-billing.csv`
 Trigger: `ExportButton` CC → `fetch()` → blob → programmatic `<a>` download
 
+## Proforma Invoice
+One invoice per billing (UNIQUE constraint on `billing_id`). Created and edited via `InvoiceEditorForm` CC on the billing detail page, gated by `billing:finalize` permission.
+
+### Key Query Functions (`src/lib/invoices/queries.ts`)
+`getInvoiceByBilling(billingId)` → `InvoiceWithLineItems | null`
+`getInvoiceById(invoiceId)` → `InvoiceWithLineItems | null`
+`createInvoice(input, createdBy)` → `InvoiceWithLineItems`
+`updateInvoice(invoiceId, input)` → void (partial update)
+`upsertLineItems(invoiceId, items)` → DELETE then INSERT all items
+`deleteInvoice(invoiceId)` → CASCADE deletes line items
+
+### Server Actions (`src/lib/invoices/actions.ts`)
+| Action                     | Permission       | Notes                                          |
+|----------------------------|------------------|------------------------------------------------|
+| createInvoiceAction        | billing:finalize | blocked if invoice already exists              |
+| updateInvoiceAction        | billing:finalize | updates fields + replaces line items atomically|
+| deleteInvoiceAction        | billing:finalize | CASCADE on line items                          |
+
+### Company Settings (`src/lib/invoices/settings-queries.ts` + `settings-actions.ts`)
+`getCompanySettings()` → `CompanySettingsMap` (Record<string, string>)
+`updateCompanySetting(key, value, updatedBy)` → upsert
+`updateCompanySettingsAction(settings)` → requires `project:edit`, allowlist-gated keys
+
+### Invoice Types (`src/lib/invoices/types.ts`)
+`InvoiceCurrency`: 'NPR' | 'USD' | 'AUD'
+`CURRENCY_SYMBOLS`, `CURRENCY_LABELS` — display helpers
+`Invoice`, `InvoiceWithLineItems`, `InvoiceLineItem`
+`CompanySettingsMap`, `CreateInvoiceInput`, `UpdateInvoiceInput`, `CreateLineItemInput`, `UpdateLineItemInput`
+
+### Calculations (client-side, in LineItemsEditor + SharePageTabs)
+```
+subtotal     = Σ (quantity × unitPrice)
+discountValue = discountEnabled ? discountAmount : 0
+taxBase      = subtotal − discountValue
+vatValue     = vatEnabled ? taxBase × vatRate / 100 : 0
+total        = taxBase + vatValue
+```
+
+### Settings Page
+Route: `/settings` (SC, requires `project:edit`)
+Component: `CompanySettingsForm` CC — 3 sections: Company Details, Bank Details, Invoice Defaults
+Accessible via Settings link in user dropdown (layout.tsx)
+
+### Public Invoice View (share page)
+`SharedInvoiceView` and `SharedInvoiceLineItem` in `src/lib/share/types.ts`
+`getSharedBillingView` fetches invoice and computes totals server-side.
+`SharePageTabs` CC: underline tabs (Proforma Invoice | Worklog) — shown only when invoice exists.
+If no invoice: worklog table rendered directly with no tabs.
+
 ## Shareable Links
 Table: `billing_share_tokens` (one active token per billing at a time)
 Available: reviewed or finalized billings only (draft blocked in action)

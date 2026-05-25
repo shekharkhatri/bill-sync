@@ -1,3 +1,5 @@
+import Link from 'next/link'
+import { Settings } from 'lucide-react'
 import { requireSession } from "@/lib/auth/session"
 import { getUserWithRole } from "@/lib/auth/session"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -56,6 +58,13 @@ export default async function ProtectedLayout({
                     {user?.email}
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  render={<Link href="/settings" className="flex items-center gap-2 w-full" />}
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                  Settings
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   <SignOutButton />

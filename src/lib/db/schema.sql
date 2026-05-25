@@ -167,3 +167,72 @@ CREATE TABLE allowed_emails (
 -- INSERT INTO allowed_emails (email, note) VALUES
 --   ('you@yourcompany.com', 'Admin'),
 --   ('teammate@yourcompany.com', 'Billing team');
+
+-- COMPANY SETTINGS (key-value store for invoice defaults)
+CREATE TABLE IF NOT EXISTS company_settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT,
+  updated_by UUID REFERENCES users(id),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Seed: Hivecraft defaults (ON CONFLICT = safe to re-run)
+INSERT INTO company_settings (key, value) VALUES
+  ('company_name',    'Hivecraft'),
+  ('company_address', ''),
+  ('company_phone',   ''),
+  ('company_email',   'hello@thehivecraft.com'),
+  ('bank_name',       ''),
+  ('bank_account',    ''),
+  ('bank_swift',      ''),
+  ('vat_rate',        '13'),
+  ('vat_label',       'VAT')
+ON CONFLICT (key) DO NOTHING;
+
+-- INVOICES (one per billing, UNIQUE on billing_id)
+CREATE TABLE IF NOT EXISTS invoices (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  billing_id       UUID NOT NULL UNIQUE REFERENCES billings(id) ON DELETE CASCADE,
+  invoice_number   TEXT NOT NULL DEFAULT '',
+  invoice_date     DATE,
+  due_date         DATE,
+  currency         TEXT NOT NULL DEFAULT 'NPR',
+  -- Client details
+  client_name      TEXT NOT NULL DEFAULT '',
+  client_address   TEXT NOT NULL DEFAULT '',
+  client_email     TEXT NOT NULL DEFAULT '',
+  -- Company snapshot at time of creation
+  company_name     TEXT NOT NULL DEFAULT '',
+  company_address  TEXT NOT NULL DEFAULT '',
+  company_phone    TEXT NOT NULL DEFAULT '',
+  company_email    TEXT NOT NULL DEFAULT '',
+  bank_name        TEXT NOT NULL DEFAULT '',
+  bank_account     TEXT NOT NULL DEFAULT '',
+  bank_swift       TEXT NOT NULL DEFAULT '',
+  -- Tax and discount
+  vat_enabled      BOOLEAN NOT NULL DEFAULT true,
+  vat_rate         NUMERIC(5,2) NOT NULL DEFAULT 13,
+  vat_label        TEXT NOT NULL DEFAULT 'VAT',
+  discount_enabled BOOLEAN NOT NULL DEFAULT false,
+  discount_amount  NUMERIC(12,2) NOT NULL DEFAULT 0,
+  discount_label   TEXT NOT NULL DEFAULT 'Discount',
+  notes            TEXT NOT NULL DEFAULT '',
+  created_by       UUID REFERENCES users(id),
+  created_at       TIMESTAMPTZ DEFAULT now(),
+  updated_at       TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_invoices_billing ON invoices(billing_id);
+
+-- INVOICE LINE ITEMS
+CREATE TABLE IF NOT EXISTS invoice_line_items (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_id   UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  description  TEXT NOT NULL DEFAULT '',
+  quantity     NUMERIC(10,2) NOT NULL DEFAULT 0,
+  unit_price   NUMERIC(12,2) NOT NULL DEFAULT 0,
+  sort_order   INTEGER NOT NULL DEFAULT 0,
+  created_at   TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_invoice_line_items_invoice ON invoice_line_items(invoice_id);

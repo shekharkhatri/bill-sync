@@ -5,6 +5,15 @@ import { formatDateFull } from '@/lib/jira/format-utils'
 import { getSharedBillingView } from '@/lib/share/queries'
 import SharedExportButton from '@/components/share/SharedExportButton'
 import TaskSummaryCell from '@/components/share/TaskSummaryCell'
+import SharePageTabs from '@/components/share/SharePageTabs'
+
+/** Formats a number with thousand separators and 2 decimal places — no currency symbol. */
+function formatAmount(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
+}
 
 interface SharedBillingPageProps {
   params: Promise<{ token: string }>
@@ -71,8 +80,8 @@ export default async function SharedBillingPage({
       {/* Main content */}
       <div className="max-w-[1200px] mx-auto px-8 py-8">
 
-        {/* Two-column invoice header — status intentionally hidden from external view */}
-        <div className="flex items-start justify-between gap-8 pb-6 border-b border-border">
+        {/* Two-column page header — project name + billing label/dates */}
+        <div className="flex items-start justify-between gap-8 pb-6">
           {/* Left: project + client */}
           <div>
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
@@ -91,91 +100,128 @@ export default async function SharedBillingPage({
           </div>
         </div>
 
-        {/* Single "Total Hours" stat */}
-        <div className="my-6 -mx-4 sm:mx-0 overflow-x-auto scrollbar-none px-4 sm:px-0">
-          <div className="inline-flex flex-col px-6 py-4 border border-border rounded-md min-w-max">
-            <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
-              Total Hours
-            </span>
-            <span className="text-4xl font-bold tabular-nums">
-              {totalBilled.toFixed(2)}h
-            </span>
-          </div>
-        </div>
-
-        {/* Billing details table — 3 columns: Task · Jira Issue · Hours */}
-        <div>
-          <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
-            Billing Details
-          </h2>
-
-          {/* Mobile: card list */}
-          <div className="flex flex-col gap-2 sm:hidden">
-            {view.tasks.map((task, index) => (
-              <div key={index} className="flex items-start justify-between gap-4 rounded-md border border-border px-4 py-3">
-                <div className="min-w-0">
-                  <span className="text-sm">{task.displaySummary}</span>
-                </div>
-                <span className="text-sm font-semibold tabular-nums shrink-0">
-                  {task.effectiveHours.toFixed(2)}h
-                </span>
-              </div>
-            ))}
-            <div className="flex items-center justify-between rounded-md bg-gray-50 border border-border px-4 py-3 font-semibold">
-              <span className="text-sm">Total</span>
-              <span className="text-sm tabular-nums">{totalBilled.toFixed(2)}h</span>
+        {/* Desktop stat row — 48px inline divider strip */}
+        <div className="mb-8 hidden sm:block">
+          <div className="inline-flex items-stretch divide-x divide-neutral-200 border border-neutral-200 rounded-md h-12">
+            <div className="flex flex-col justify-center px-5">
+              <p className="text-[11px] text-neutral-500 uppercase tracking-wide leading-none">
+                TOTAL HOURS
+              </p>
+              <p className="text-sm font-semibold tabular-nums text-neutral-900 mt-1">
+                {view.billing.totalModifiedHours.toFixed(2)}h
+              </p>
             </div>
-          </div>
-
-          {/* Desktop: table — table-fixed ensures Hours col is always visible */}
-          <div className="hidden sm:block overflow-hidden rounded-md border border-border">
-            <table className="w-full text-sm table-fixed">
-              {/* colgroup controls column widths in table-fixed mode.
-                  style width on col is the only way to set this — justified exception. */}
-              <colgroup>
-                <col style={{ width: 'auto' }} />
-                <col style={{ width: '96px' }} />
-              </colgroup>
-
-              <thead className="bg-gray-50">
-                <tr className="border-b border-border">
-                  <th className="text-left text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-2.5">
-                    Task
-                  </th>
-                  <th className="text-right text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-2.5">
-                    Hours
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-border">
-                {view.tasks.map((task, index) => (
-                  <tr key={index} className="h-10 hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-0 min-w-0 max-w-0">
-                      <TaskSummaryCell summary={task.displaySummary} />
-                    </td>
-                    <td className="px-4 py-0 text-right">
-                      <span className="text-sm font-semibold tabular-nums whitespace-nowrap">
-                        {task.effectiveHours.toFixed(2)}h
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-
-              <tfoot>
-                <tr className="bg-gray-50 border-t-2 border-border font-semibold">
-                  <td className="px-4 py-2.5 min-w-0">
-                    <span className="text-sm font-semibold text-neutral-900">Total</span>
-                  </td>
-                  <td className="px-4 py-2.5 text-right text-sm tabular-nums whitespace-nowrap">
-                    {totalBilled.toFixed(2)}h
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+            {view.invoice && (
+              <div className="flex flex-col justify-center px-5">
+                <p className="text-[11px] text-neutral-500 uppercase tracking-wide leading-none">
+                  INVOICE TOTAL
+                </p>
+                <p className="text-sm font-semibold tabular-nums text-neutral-900 mt-1">
+                  {view.invoice.currency}{' '}{formatAmount(view.invoice.total)}
+                </p>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Mobile stat grid — 2-col cards */}
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:hidden">
+          <div className="border border-neutral-200 rounded-md p-3">
+            <p className="text-[11px] uppercase tracking-wide text-neutral-500">
+              TOTAL HOURS
+            </p>
+            <p className="text-xl font-bold tabular-nums mt-1">
+              {view.billing.totalModifiedHours.toFixed(2)}h
+            </p>
+          </div>
+          {view.invoice && (
+            <div className="border border-neutral-200 rounded-md p-3">
+              <p className="text-[11px] uppercase tracking-wide text-neutral-500">
+                INVOICE TOTAL
+              </p>
+              <p className="text-xl font-bold tabular-nums mt-1 break-all">
+                {view.invoice.currency}{' '}{formatAmount(view.invoice.total)}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Worklog table (standalone or inside tabs) */}
+        {(() => {
+          const worklogTable = (
+            <div>
+              <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
+                Billing Details
+              </h2>
+
+              {/* Mobile: card list */}
+              <div className="flex flex-col gap-2 sm:hidden">
+                {view.tasks.map((task, index) => (
+                  <div key={index} className="flex items-start justify-between gap-4 rounded-md border border-border px-4 py-3">
+                    <div className="min-w-0">
+                      <span className="text-sm">{task.displaySummary}</span>
+                    </div>
+                    <span className="text-sm font-semibold tabular-nums shrink-0">
+                      {task.effectiveHours.toFixed(2)}h
+                    </span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between rounded-md bg-gray-50 border border-border px-4 py-3 font-semibold">
+                  <span className="text-sm">Total</span>
+                  <span className="text-sm tabular-nums">{totalBilled.toFixed(2)}h</span>
+                </div>
+              </div>
+
+              {/* Desktop: table */}
+              <div className="hidden sm:block overflow-hidden rounded-md border border-border">
+                <table className="w-full text-sm table-fixed">
+                  <colgroup>
+                    <col style={{ width: 'auto' }} />
+                    <col style={{ width: '96px' }} />
+                  </colgroup>
+                  <thead className="bg-gray-50">
+                    <tr className="border-b border-border">
+                      <th className="text-left text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-2.5">
+                        Task
+                      </th>
+                      <th className="text-right text-[11px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-2.5">
+                        Hours
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {view.tasks.map((task, index) => (
+                      <tr key={index} className="h-10 hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-0 min-w-0 max-w-0">
+                          <TaskSummaryCell summary={task.displaySummary} />
+                        </td>
+                        <td className="px-4 py-0 text-right">
+                          <span className="text-sm font-semibold tabular-nums whitespace-nowrap">
+                            {task.effectiveHours.toFixed(2)}h
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gray-50 border-t-2 border-border font-semibold">
+                      <td className="px-4 py-2.5 min-w-0">
+                        <span className="text-sm font-semibold text-neutral-900">Total</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-sm tabular-nums whitespace-nowrap">
+                        {totalBilled.toFixed(2)}h
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )
+
+          return view.invoice ? (
+            <SharePageTabs invoice={view.invoice} worklogContent={worklogTable} />
+          ) : worklogTable
+        })()}
 
         {/* Footer */}
         <div className="mt-10 pt-6 border-t border-border text-center">

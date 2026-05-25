@@ -91,6 +91,8 @@ Confirm at end of response: "Docs updated: {files}"
 | HF    | Worklog preview page fixes + CSV toggle | ✓ done |
 | HF    | Task drag-drop reorder + share page manual tag fix | ✓ done |
 | HF    | Reorder save button + share page hours column fix  | ✓ done |
+| HF    | Tooltip on truncated share page task names         | ✓ done |
+| HF    | Proforma Invoice (settings, editor, share tabs)    | ✓ done |
 
 ## Known Pending
 - Batch 10: Toaster in layout, error boundaries on all pages

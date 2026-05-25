@@ -18,6 +18,9 @@ Kysely types: src/lib/db/types.ts (manually maintained — run codegen if schema
 | export_logs          | uuid | billing_id → billings                      | audit trail for csv exports  |
 | allowed_emails       | uuid | —                                          | login allowlist              |
 | billing_share_tokens | uuid | billing_id → billings                      | token unique idx, is_active flag |
+| company_settings     | text | —                                          | key-value store, seeded defaults |
+| invoices             | uuid | billing_id → billings (UNIQUE)             | one per billing, company snapshot|
+| invoice_line_items   | uuid | invoice_id → invoices                      | CASCADE delete, sort_order       |
 
 ## Worklog Columns (key ones)
 | Column                 | Type    | Notes                                         |
@@ -38,6 +41,17 @@ effectiveComment = modified_comment          ← NO fallback to original_comment
 displaySummary   = custom_summary ?? issue_summary ?? jira_issue_key
 displayIssueKey  = jira_reference_removed ? null : jira_issue_key
 ```
+
+## company_settings Key Columns
+`key` (TEXT PRIMARY KEY), `value` (TEXT nullable), `updated_by` → users, `updated_at`
+Seeded with: `company_name`, `company_address`, `company_phone`, `company_email`, `bank_name`, `bank_account`, `bank_swift`, `vat_rate`, `vat_label`
+
+## invoices Key Columns
+`billing_id` (UNIQUE → billings ON DELETE CASCADE), `invoice_number`, `invoice_date`, `due_date`, `currency` (NPR/USD/AUD), client snapshot fields, company snapshot fields, bank fields, `vat_enabled`, `vat_rate` NUMERIC(5,2), `vat_label`, `discount_enabled`, `discount_amount` NUMERIC(12,2), `discount_label`, `notes`
+One per billing — UNIQUE constraint enforced.
+
+## invoice_line_items Key Columns
+`invoice_id` → invoices ON DELETE CASCADE, `description`, `quantity` NUMERIC(10,2), `unit_price` NUMERIC(12,2), `sort_order`
 
 ## billing_share_tokens Key Columns
 `token` (URL-safe base64, 43 chars, 256-bit entropy), `is_active` (revoke by setting false),

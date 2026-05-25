@@ -118,6 +118,52 @@ export interface BillingShareTokenTable {
   csv_enabled: Generated<boolean>
 }
 
+export interface CompanySettingsTable {
+  key: string
+  value: string | null
+  updated_by: string | null
+  updated_at: Generated<Date>
+}
+
+export interface InvoicesTable {
+  id: Generated<string>
+  billing_id: string
+  invoice_number: Generated<string>
+  invoice_date: Date | null
+  due_date: Date | null
+  currency: Generated<string>
+  client_name: Generated<string>
+  client_address: Generated<string>
+  client_email: Generated<string>
+  company_name: Generated<string>
+  company_address: Generated<string>
+  company_phone: Generated<string>
+  company_email: Generated<string>
+  bank_name: Generated<string>
+  bank_account: Generated<string>
+  bank_swift: Generated<string>
+  vat_enabled: Generated<boolean>
+  vat_rate: Generated<number>
+  vat_label: Generated<string>
+  discount_enabled: Generated<boolean>
+  discount_amount: Generated<number>
+  discount_label: Generated<string>
+  notes: Generated<string>
+  created_by: string | null
+  created_at: Generated<Date>
+  updated_at: Generated<Date>
+}
+
+export interface InvoiceLineItemsTable {
+  id: Generated<string>
+  invoice_id: string
+  description: Generated<string>
+  quantity: Generated<number>
+  unit_price: Generated<number>
+  sort_order: Generated<number>
+  created_at: Generated<Date>
+}
+
 export interface Database {
   roles: RoleTable
   permissions: PermissionTable
@@ -131,4 +177,7 @@ export interface Database {
   export_logs: ExportLogTable
   allowed_emails: AllowedEmailTable
   billing_share_tokens: BillingShareTokenTable
+  company_settings: CompanySettingsTable
+  invoices: InvoicesTable
+  invoice_line_items: InvoiceLineItemsTable
 }

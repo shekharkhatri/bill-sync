@@ -6,6 +6,9 @@ import { getProjectById } from '@/lib/projects/queries'
 import { getBillingWithStats, getBillingTaskSummaries } from '@/lib/billings/queries'
 import { getJiraConfigForDisplay } from '@/lib/jira/queries'
 import { getShareToken } from '@/lib/share/queries'
+import { getInvoiceByBilling } from '@/lib/invoices/queries'
+import { getCompanySettings } from '@/lib/invoices/settings-queries'
+import InvoiceEditorForm from '@/components/invoices/InvoiceEditorForm'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { formatDateFull } from '@/lib/jira/format-utils'
 import { BILLING_STATUS_LABELS } from '@/lib/billings/types'
@@ -50,10 +53,12 @@ export default async function BillingDetailPage({
   const project = await getProjectById(billing.projectId)
   if (!project) notFound()
 
-  const [tasks, jiraConfig, shareToken] = await Promise.all([
+  const [tasks, jiraConfig, shareToken, invoice, companySettings] = await Promise.all([
     getBillingTaskSummaries(billingId),
     getJiraConfigForDisplay(billing.projectId),
     getShareToken(billingId),
+    getInvoiceByBilling(billingId),
+    getCompanySettings(),
   ])
 
   const instanceUrl = jiraConfig?.instanceUrl ?? ''
@@ -170,6 +175,19 @@ export default async function BillingDetailPage({
             billingId={billing.id}
             billingStatus={billing.status}
             existingToken={shareToken}
+          />
+        </div>
+      </PermissionGuard>
+
+      {/* Proforma Invoice section */}
+      <PermissionGuard permission="billing:finalize">
+        <div className="mb-6">
+          <h2 className="text-sm font-semibold mb-3">Proforma Invoice</h2>
+          <InvoiceEditorForm
+            billingId={billing.id}
+            clientName={project.clientName}
+            invoice={invoice}
+            settings={companySettings}
           />
         </div>
       </PermissionGuard>

@@ -14,6 +14,7 @@ src/app/
     layout.tsx                          ← requireSession, nav sidebar
     forbidden/page.tsx
     dashboard/page.tsx                  ← project grid
+    settings/page.tsx                   ← Company settings (project:edit guard)
     projects/
       new/page.tsx                      ← NewProjectForm
       [id]/
@@ -74,10 +75,16 @@ src/lib/
   export/
     csv.ts                ← CSV billing export, buildBillingCSV, buildSharedBillingCSV, getCSVFilename
   share/
-    types.ts              ← SharedBillingView, SharedTaskRow, BillingShareToken
+    types.ts              ← SharedBillingView, SharedTaskRow, SharedInvoiceView, BillingShareToken
     token.ts              ← generateShareToken, isTokenExpired SERVER ONLY
     queries.ts            ← getShareToken, createShareToken, revokeShareToken, getSharedBillingView
     actions.ts            ← generateShareLinkAction, revokeShareLinkAction SA
+  invoices/
+    types.ts              ← InvoiceCurrency, Invoice, InvoiceWithLineItems, InvoiceLineItem, CompanySettingsMap…
+    queries.ts            ← getInvoiceByBilling, createInvoice, updateInvoice, upsertLineItems, deleteInvoice
+    actions.ts            ← createInvoiceAction, updateInvoiceAction, deleteInvoiceAction SA
+    settings-queries.ts   ← getCompanySettings, updateCompanySetting SERVER ONLY
+    settings-actions.ts   ← updateCompanySettingsAction SA (requires project:edit)
 ```
 
 ## Components
@@ -128,5 +135,13 @@ src/components/
     ShareLinkManager.tsx         ← CC, generate/revoke shareable link, copy URL
   share/
     SharedExportButton.tsx       ← CC, public CSV export via share token (no auth headers)
+    SharePageTabs.tsx            ← CC, underline tabs (Proforma Invoice | Worklog) on share page
+  invoices/
+    CompanySettingsForm.tsx      ← CC, 3-section settings form (company / bank / defaults)
+    InvoiceMetaFields.tsx        ← CC, invoice #, date, due date, currency grid
+    AddressBlock.tsx             ← CC, name/address/email fields for from/to parties
+    InvoiceTaxControls.tsx       ← CC, VAT toggle+rate, discount toggle+amount with Switch
+    LineItemsEditor.tsx          ← CC, editable table with subtotal/discount/VAT/total tfoot
+    InvoiceEditorForm.tsx        ← CC, main invoice editor (view/edit/create modes)
   ui/                            ← Shadcn/ui components (generated, do not edit)
 ```
